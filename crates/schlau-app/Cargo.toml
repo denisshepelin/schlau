@@ -22,6 +22,7 @@ schlau-extract = { path = "../schlau-extract" }
 jiff = "0.2"
 serde = { workspace = true }
 serde_json = { workspace = true }
+ureq = "3"
 
 [target.'cfg(target_os = "macos")'.dependencies]
 schlau-sync = { path = "../schlau-sync", features = ["metal"] }

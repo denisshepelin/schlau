@@ -46,6 +46,7 @@ another database.
 | `s` | Star |
 | `⇧U` / `⇧I` | Mark unread / read |
 | `z` | Undo the last action |
+| `i` | Load the images in the open conversation |
 | `v` | View the original HTML in the secure web view |
 | `⇧E` | Expand or collapse all messages |
 | `g i`, `g e`, `g t`, `g d`, `g #`, `g !` | Go to Inbox, Archive, Sent, Drafts, Trash, Spam |
@@ -136,6 +137,12 @@ WKWebView with JavaScript off, a non-persistent store, a CSP that allows no remo
 blocks every http(s) request as a second line. Tracking pixels are removed, remote images are blocked, link wrappers
 (Google, Outlook safelinks, Proofpoint, Mandrill, …) are unwrapped and `utm_*`-style parameters stripped; the reader
 says what it removed.
+
+A blocked image shows as a block with its description (alt text) and the host it would come from. Click it to load
+that one, or press `i` (or "Load images" in the reader's privacy line) for every image in the open conversation.
+Loading tells the sender's server that the message was opened, and from which address, so nothing loads by itself.
+Images are fetched by schlau, not a browser: no cookies, no referrer, https first, 15 MB at most, decoded off the main
+thread and kept for the session. Tracking pixels are never loaded, whatever you choose.
 
 ## Layout
 

@@ -6,6 +6,7 @@ mod preview;
 mod quicklook;
 mod rank;
 mod reader;
+mod remote_images;
 mod search;
 mod settings;
 mod settings_pane;
@@ -109,6 +110,7 @@ fn setup(s: &mut Ui, waker: Waker) {
     s.preview_loads.set_waker(waker.clone());
     s.preview_files.set_waker(waker.clone());
     s.images = Some(rune::ImageCache::new(waker.clone()));
+    s.remote_images.set_waker(waker.clone());
     let Some(store) = s.pending_store.take() else { return };
     let notify = Notify::new(move || waker());
     let search = Search {
@@ -134,6 +136,11 @@ fn setup(s: &mut Ui, waker: Waker) {
 fn poll(s: &mut Ui, clock: f64, tx: &mut Tx) -> bool {
     s.clock = clock;
     let mut changed = false;
+    if let Some(images) = s.images.as_ref()
+        && s.remote_images.poll(images)
+    {
+        changed = true;
+    }
     if settings_pane::focus_pending(s) {
         changed = true;
     }

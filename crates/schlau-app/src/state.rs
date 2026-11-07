@@ -55,6 +55,8 @@ pub struct Ui {
     pub settings_pane: Option<crate::settings_pane::SettingsPane>,
     /// Decodes attachment pictures off the main thread; made once the window has a waker.
     pub images: Option<rune::ImageCache>,
+    /// Remote pictures in message bodies, loaded when asked for.
+    pub remote_images: crate::remote_images::RemoteImages,
     /// Where quick look fetches files from: the account or the fixture folder.
     pub blobs: Option<Arc<dyn BlobSource>>,
     pub attachment_cache: PathBuf,
@@ -136,6 +138,7 @@ impl Ui {
             settings: crate::settings::SettingsFile::transient(),
             settings_pane: None,
             images: None,
+            remote_images: Default::default(),
             blobs: None,
             attachment_cache: PathBuf::new(),
             models_dir: PathBuf::new(),
@@ -413,6 +416,27 @@ impl Ui {
         if self.search.is_some() {
             self.request_search();
         }
+    }
+
+    /// Loads the remote pictures in `urls`.
+    pub fn load_images(&mut self, urls: Vec<String>) {
+        if urls.is_empty() {
+            self.toast("No remote images here");
+        } else if self.remote_images.load(urls) == 0 {
+            self.toast("Images already loaded");
+        }
+    }
+
+    /// The remote pictures in the open conversation's expanded messages.
+    pub fn open_images(&self) -> Vec<String> {
+        let Some(t) = self.thread.as_ref() else { return Vec::new() };
+        t.messages
+            .iter()
+            .zip(&t.expanded)
+            .filter(|(_, open)| **open)
+            .filter_map(|(m, _)| t.bodies.get(&m.id))
+            .flat_map(|b| crate::remote_images::remote_urls(&b.blocks))
+            .collect()
     }
 
     pub fn toast(&mut self, text: impl Into<String>) {

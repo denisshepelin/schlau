@@ -2,7 +2,7 @@ use std::io::Cursor;
 
 use image::codecs::jpeg::JpegEncoder;
 use image::imageops::FilterType;
-use image::{DynamicImage, ImageDecoder, ImageReader, RgbImage, RgbaImage};
+use image::{DynamicImage, ImageDecoder, ImageEncoder, ImageReader, RgbImage, RgbaImage};
 
 use crate::{EncodedImage, ExtractError, Extracted, Limits};
 
@@ -89,6 +89,38 @@ pub(crate) fn flatten(img: &DynamicImage) -> RgbImage {
     }
 }
 
+/// A picture from the web made drawable: PNG and JPEG as they came, other formats (GIF, WebP, BMP,
+/// TIFF) decoded, downscaled to `max_side` and encoded as PNG, transparency kept. Any size is fine:
+/// a 20-pixel icon is still a picture here.
+pub fn web_image(bytes: &[u8], max_side: u32) -> Result<EncodedImage, ExtractError> {
+    let mut reader = ImageReader::new(Cursor::new(bytes))
+        .with_guessed_format()
+        .map_err(malformed)?;
+    reader.limits(decoder_limits());
+    let format = reader.format().ok_or_else(|| ExtractError::Unsupported("unknown image format".into()))?;
+    let passthrough = match format {
+        image::ImageFormat::Png => Some("image/png"),
+        image::ImageFormat::Jpeg => Some("image/jpeg"),
+        _ => None,
+    };
+    let mut decoder = reader.into_decoder().map_err(malformed)?;
+    let (width, height) = decoder.dimensions();
+    if let Some(mime) = passthrough {
+        return Ok(EncodedImage { bytes: bytes.to_vec(), mime, width, height });
+    }
+    let orientation = decoder.orientation().ok();
+    let mut decoded = DynamicImage::from_decoder(decoder).map_err(malformed)?;
+    if let Some(orientation) = orientation {
+        decoded.apply_orientation(orientation);
+    }
+    let rgba = downscale(decoded, max_side).to_rgba8();
+    let mut png = Vec::new();
+    image::codecs::png::PngEncoder::new(&mut png)
+        .write_image(rgba.as_raw(), rgba.width(), rgba.height(), image::ExtendedColorType::Rgba8)
+        .map_err(malformed)?;
+    Ok(EncodedImage { bytes: png, mime: "image/png", width: rgba.width(), height: rgba.height() })
+}
+
 pub(crate) fn encode_jpeg(rgb: &RgbImage) -> Result<EncodedImage, ExtractError> {
     let mut bytes = Vec::new();
     JpegEncoder::new_with_quality(&mut bytes, JPEG_QUALITY)
@@ -111,6 +143,22 @@ mod tests {
         assert_eq!(fit(800, 600, 1024), (800, 600));
         assert_eq!(fit(2048, 1024, 1024), (1024, 512));
         assert_eq!(fit(100, 100_000, 1024), (1, 1024));
+    }
+
+    #[test]
+    fn web_images_pass_png_through_and_turn_gif_into_png() {
+        let tiny = RgbaImage::from_pixel(12, 8, image::Rgba([10, 20, 30, 128]));
+        let encode = |format| {
+            let mut out = Cursor::new(Vec::new());
+            DynamicImage::ImageRgba8(tiny.clone()).write_to(&mut out, format).unwrap();
+            out.into_inner()
+        };
+        let png = encode(image::ImageFormat::Png);
+        let kept = web_image(&png, 1024).unwrap();
+        assert_eq!((kept.mime, kept.width, kept.height, kept.bytes == png), ("image/png", 12, 8, true));
+        let gif = web_image(&encode(image::ImageFormat::Gif), 1024).unwrap();
+        assert_eq!((gif.mime, gif.width, gif.height), ("image/png", 12, 8));
+        assert!(web_image(b"<html>not a picture</html>", 1024).is_err());
     }
 
     #[test]

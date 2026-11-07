@@ -4,6 +4,7 @@ use schlau_store::{Address, MessageView};
 
 use crate::format::long_date;
 use crate::reader::{self, Rendered};
+use crate::remote_images::RemoteImages;
 use crate::state::{OpenThread, Ui};
 use crate::theme;
 
@@ -39,7 +40,7 @@ pub fn web_view(t: &OpenThread, message_id: &str, k: &Kit) -> El {
         )
 }
 
-pub fn thread_view(t: &OpenThread, k: &Kit, dark: bool) -> El {
+pub fn thread_view(t: &OpenThread, images: &RemoteImages, k: &Kit, dark: bool) -> El {
     let subject = t.messages.first().map(|m| m.subject.as_str()).unwrap_or("(no subject)");
     let title = TextStyle { size: 20.0, weight: 600.0, ..k.ty.body }.lh(28.0);
     let header = col()
@@ -54,7 +55,7 @@ pub fn thread_view(t: &OpenThread, k: &Kit, dark: bool) -> El {
         );
     let messages = t.messages.iter().enumerate().map(|(i, m)| {
         let expanded = t.expanded.get(i).copied().unwrap_or(true);
-        message_card(m, t.bodies.get(&m.id), expanded, i == t.focused, k, dark)
+        message_card(m, t.bodies.get(&m.id), expanded, i == t.focused, images, k, dark)
     });
     let page = col().w_full().max_w(820.0).px(28.0).py(24.0).gap(10.0).child(header).children(messages);
     col()
@@ -74,7 +75,7 @@ fn sender(m: &MessageView) -> Option<&Address> {
     m.addresses.from.first()
 }
 
-fn message_card(m: &MessageView, body: Option<&Rendered>, expanded: bool, focused: bool, k: &Kit, dark: bool) -> El {
+fn message_card(m: &MessageView, body: Option<&Rendered>, expanded: bool, focused: bool, images: &RemoteImages, k: &Kit, dark: bool) -> El {
     let name = sender(m).map(|a| a.display().to_string()).unwrap_or_else(|| "(unknown sender)".into());
     let email = sender(m).map(|a| a.email.clone()).unwrap_or_default();
     let id = m.id.clone();
@@ -108,7 +109,7 @@ fn message_card(m: &MessageView, body: Option<&Rendered>, expanded: bool, focuse
         .join(", ");
     let card = card.child(text(format!("to {recipients}")).font(k.ty.small).color(k.c.text_faint).truncate());
     match body {
-        Some(body) => card.child(reader::body_view(body, k, theme::accent(dark))),
+        Some(body) => card.child(reader::body_view(body, images, k, theme::accent(dark))),
         None => card.child(
             col()
                 .gap(6.0)

@@ -212,7 +212,7 @@ fn blocks_from_newsletter() {
     );
     assert!(flat.iter().any(|b| matches!(
         b,
-        Block::Image { alt, src: ImageSource::Blocked(url) } if alt == "The Weekly Roast" && url.starts_with("https://mcusercontent.com/")
+        Block::Image { alt, src: ImageSource::Blocked(url), .. } if alt == "The Weekly Roast" && url.starts_with("https://mcusercontent.com/")
     )));
     assert!(!flat.iter().any(|b| matches!(b, Block::Image { src: ImageSource::Blocked(url), .. } if url.contains("list-manage"))));
     let paragraph = flat
@@ -283,7 +283,7 @@ fn blocks_from_receipt_flatten_tables_and_resolve_cids() {
     let default_blocks = to_blocks(&html);
     assert!(default_blocks.iter().any(|b| matches!(b, Block::Image { src: ImageSource::Cid(id), .. } if id == "logo@example.books")));
     let blocks = to_blocks_with(&html, &Options::default().with_cid_urls(receipt_cids()));
-    assert!(blocks.iter().any(|b| matches!(b, Block::Image { src: ImageSource::Local(url), alt } if url == "schlau-cid://blob-logo" && alt == "Example Books")));
+    assert!(blocks.iter().any(|b| matches!(b, Block::Image { src: ImageSource::Local(url), alt, .. } if url == "schlau-cid://blob-logo" && alt == "Example Books")));
     assert!(blocks.iter().any(|b| matches!(b, Block::Image { src: ImageSource::Local(url), .. } if url == "schlau-cid://blob-item-2")));
     assert!(blocks.iter().any(
         |b| matches!(b, Block::Heading(2, i) if inline_text(i) == "Receipt #EB-20261107-0042")
@@ -293,7 +293,7 @@ fn blocks_from_receipt_flatten_tables_and_resolve_cids() {
     ));
     assert!(
         blocks.iter().any(
-            |b| matches!(b, Block::Image { src: ImageSource::Inline(_), alt } if alt == "badge")
+            |b| matches!(b, Block::Image { src: ImageSource::Inline(_), alt, .. } if alt == "badge")
         )
     );
 }

@@ -54,6 +54,8 @@ pub enum Block {
     Image {
         alt: String,
         src: ImageSource,
+        /// The width the message asks for, in CSS pixels (`width="600"`), when it gives one.
+        width: Option<u32>,
     },
     Rule,
     Pre(String),
@@ -448,10 +450,18 @@ impl<'o> Builder<'o> {
                 }
             }
         };
+        let width = width.as_deref().and_then(css_pixels);
         if let Some(src) = source {
-            self.push_block(Block::Image { alt, src });
+            self.push_block(Block::Image { alt, src, width });
         }
     }
+}
+
+/// A length attribute in pixels: `600` or `600px`; percentages and other units give nothing.
+fn css_pixels(value: &str) -> Option<u32> {
+    let value = value.trim();
+    let number = value.strip_suffix("px").unwrap_or(value).trim();
+    number.parse::<f32>().ok().filter(|n| n.is_finite() && *n >= 1.0).map(|n| n.round() as u32)
 }
 
 /// Reader blocks with default [`Options`]: remote images blocked, `cid:` left unresolved.

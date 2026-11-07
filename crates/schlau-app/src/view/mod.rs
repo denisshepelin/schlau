@@ -36,7 +36,7 @@ pub fn view(s: &Ui, cx: &mut Cx<Ui>) -> El {
 fn main_view(s: &Ui, thread: &Option<crate::state::OpenThread>, web: &Option<String>, k: &Kit, dark: bool) -> El {
     match (thread, web) {
         (Some(t), Some(id)) => thread::web_view(t, id, k),
-        (Some(t), None) => thread::thread_view(t, k, dark),
+        (Some(t), None) => thread::thread_view(t, &s.remote_images, k, dark),
         (None, _) => list::thread_list(s, k, dark),
     }
 }

@@ -44,6 +44,7 @@ pub const COMMANDS: &[Command] = &[
     Command { id: "unread", title: "Mark unread", keys: &["shift+u"], run: |s, _| set_seen(s, false) },
     Command { id: "read", title: "Mark read", keys: &["shift+i"], run: |s, _| set_seen(s, true) },
     Command { id: "undo", title: "Undo", keys: &["z", "mod+z"], run: undo },
+    Command { id: "load-images", title: "Load images in the conversation", keys: &["i"], run: |s, _| s.load_images(s.open_images()) },
     Command { id: "web", title: "View original (secure web view)", keys: &["v"], run: toggle_web },
     Command { id: "expand", title: "Expand all messages", keys: &["shift+e"], run: expand_all },
     Command { id: "refresh", title: "Sync now", keys: &["mod+r"], run: refresh },

@@ -6,6 +6,8 @@
 //! reported as [`ExtractError::Malformed`].
 
 mod image;
+
+pub use image::web_image;
 mod office;
 mod pdf;
 mod text;

@@ -1,11 +1,12 @@
 //! The native reader: draws a message body as blocks the app controls, so nothing in it can load,
 //! run or track. Bodies are sanitized once, when they arrive, and kept with the open conversation.
 
-use rune::{Color, El, Link, Span, TextStyle, Tx, col, el, rich, row, text};
+use rune::{Color, El, Link, Span, SurfaceFit, TextStyle, Tx, col, el, rich, row, text};
 use rune_kit::Kit;
 use schlau_html::{Block, ImageSource, Inline, Options, TrackerReport};
 use schlau_store::{Attachment, Body};
 
+use crate::remote_images::{self, RemoteImage, RemoteImages};
 use crate::state::Ui;
 
 /// A body ready to draw: reader blocks, what sanitizing removed, and the HTML for the web view.
@@ -73,13 +74,21 @@ fn plural(n: usize) -> &'static str {
     if n == 1 { "" } else { "s" }
 }
 
-pub fn body_view(rendered: &Rendered, k: &Kit, accent: Color) -> El {
+pub fn body_view(rendered: &Rendered, images: &RemoteImages, k: &Kit, accent: Color) -> El {
+    let urls = remote_images::remote_urls(&rendered.blocks);
+    let load = urls.iter().any(|u| images.wanted(u)).then(|| {
+        text("Load images")
+            .font(k.ty.small)
+            .color(accent)
+            .on_press(move |s: &mut Ui| s.load_images(urls.clone()))
+    });
     let note = privacy_note(&rendered.report).map(|n| {
         row()
             .gap(6.0)
             .center_y()
             .child(text("◐").font(k.ty.small).color(accent))
             .child(text(n).font(k.ty.small).color(k.c.text_faint))
+            .children(load)
     });
     col()
         .w_full()
@@ -87,7 +96,7 @@ pub fn body_view(rendered: &Rendered, k: &Kit, accent: Color) -> El {
         .gap(12.0)
         .selection_group(true)
         .children(note)
-        .children(rendered.blocks.iter().map(|b| block(b, k, accent, 0)))
+        .children(rendered.blocks.iter().map(|b| block(b, images, k, accent, 0)))
         .children((!rendered.attachments.is_empty()).then(|| attachments(&rendered.attachments, k)))
 }
 
@@ -170,7 +179,7 @@ fn paragraph(inlines: &[Inline], style: TextStyle, k: &Kit, accent: Color) -> El
         })
 }
 
-fn block(b: &Block, k: &Kit, accent: Color, depth: usize) -> El {
+fn block(b: &Block, images: &RemoteImages, k: &Kit, accent: Color, depth: usize) -> El {
     let body = k.ty.body.lh(21.0);
     match b {
         Block::Paragraph(inlines) => paragraph(inlines, body, k, accent),
@@ -186,7 +195,7 @@ fn block(b: &Block, k: &Kit, accent: Color, depth: usize) -> El {
             .w_full()
             .gap(12.0)
             .child(el().w(2.0).h_full().radius(1.0).fill(k.c.border_base))
-            .child(col().grow(1.0).min_w(0.0).gap(8.0).opacity(0.8).children(blocks.iter().map(|b| block(b, k, accent, depth + 1)))),
+            .child(col().grow(1.0).min_w(0.0).gap(8.0).opacity(0.8).children(blocks.iter().map(|b| block(b, images, k, accent, depth + 1)))),
         Block::Quote(_) => el(),
         Block::List { ordered, items } => col().w_full().gap(4.0).children(items.iter().enumerate().map(|(i, item)| {
             let marker = if *ordered { format!("{}.", i + 1) } else { "•".into() };
@@ -194,9 +203,10 @@ fn block(b: &Block, k: &Kit, accent: Color, depth: usize) -> El {
                 .w_full()
                 .gap(8.0)
                 .child(text(marker).font(body).color(k.c.text_faint).w(18.0))
-                .child(col().grow(1.0).min_w(0.0).gap(4.0).children(item.iter().map(|b| block(b, k, accent, depth + 1))))
+                .child(col().grow(1.0).min_w(0.0).gap(4.0).children(item.iter().map(|b| block(b, images, k, accent, depth + 1))))
         })),
-        Block::Image { alt, src } => {
+        Block::Image { alt, src: ImageSource::Blocked(url) | ImageSource::Remote(url), width } => remote_image(alt, url, *width, images, k),
+        Block::Image { alt, src, .. } => {
             let label = match src {
                 ImageSource::Blocked(_) | ImageSource::Remote(_) => "remote image, not loaded",
                 _ => "image",
@@ -217,4 +227,63 @@ fn block(b: &Block, k: &Kit, accent: Color, depth: usize) -> El {
             .fill(k.c.layer_02)
             .child(text(code.clone()).font(k.ty.mono).color(k.c.text_base).selectable(true).selection_color(k.selection()).wrap_anywhere().w_full()),
     }
+}
+
+fn ratio(w: u32, h: u32) -> f32 {
+    w as f32 / h.max(1) as f32
+}
+
+/// A remote picture: drawn once loaded; before that its description, where it comes from, and a
+/// press to load it.
+fn remote_image(alt: &str, url: &str, width: Option<u32>, images: &RemoteImages, k: &Kit) -> El {
+    let state = images.get(url);
+    if let Some(RemoteImage::Ready { image, size }) = state {
+        let drawn = size.or_else(|| image.size().map(|[w, h]| (w / 2, h / 2)));
+        if let Some((w, h)) = drawn {
+            let shown = width.unwrap_or(w).max(1) as f32;
+            return row().w_full().child(el().w_full().max_w(shown).aspect_ratio(ratio(w, h)).pixels_fit(image.pixels(), SurfaceFit::Fit).radius(4.0));
+        }
+    }
+    let status = match state {
+        Some(RemoteImage::Loading | RemoteImage::Ready { .. }) => "loading…".to_string(),
+        Some(RemoteImage::Failed(why)) => format!("couldn't load: {why}. Click to try again"),
+        None => "click to load, i loads every image".to_string(),
+    };
+    let described = !alt.trim().is_empty();
+    let description = if described { alt.trim().to_string() } else { "No description".to_string() };
+    let url = url.to_string();
+    col()
+        .w_full()
+        .px(12.0)
+        .py(8.0)
+        .gap(3.0)
+        .radius(6.0)
+        .fill(k.c.layer_02)
+        .border(1.0, k.c.border_muted)
+        .hover(k.c.hover)
+        .child(
+            row()
+                .w_full()
+                .gap(8.0)
+                .center_y()
+                .child(
+                    row()
+                        .h(18.0)
+                        .px(5.0)
+                        .center()
+                        .radius(4.0)
+                        .fill(k.c.layer_04)
+                        .child(text("Image").font(k.ty.text_xsmall_medium).color(k.c.text_muted)),
+                )
+                .child(
+                    text(description)
+                        .font(k.ty.small)
+                        .color(if described { k.c.text_base } else { k.c.text_faint })
+                        .wrap()
+                        .grow(1.0)
+                        .min_w(0.0),
+                ),
+        )
+        .child(text(format!("{} · {status}", remote_images::host(&url))).font(k.ty.small).color(k.c.text_faint).truncate())
+        .on_press(move |s: &mut Ui| s.load_images(vec![url.clone()]))
 }
