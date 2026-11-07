@@ -1,0 +1,30 @@
+{
+  "id": "026-older-0",
+  "threadId": "t-older-0",
+  "mailboxIds": {
+    "archive": true
+  },
+  "keywords": {
+    "$seen": true
+  },
+  "ago": "40d",
+  "subject": "Vertrag Verlängerung: zwei Fragen",
+  "from": [
+    {
+      "name": "Lena Fischer",
+      "email": "lena.fischer@bergwerk.de"
+    }
+  ],
+  "to": [
+    {
+      "name": "Denis Shepelin",
+      "email": "denis@schlau.example"
+    }
+  ],
+  "preview": "Hallo Denis, bevor wir verlängern: Können wir auf jährliche Abrechnung umstellen, und ist der Auftragsverarbeitungsvertrag noch aktuell? Viele Grüße, Lena",
+  "hasAttachment": false,
+  "size": 4154,
+  "messageId": [
+    "026-older-0@fixtures.schlau.example"
+  ]
+}

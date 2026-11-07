@@ -1,0 +1,46 @@
+{
+  "id": "002-offsite-1",
+  "threadId": "t-offsite",
+  "mailboxIds": {
+    "inbox": true
+  },
+  "keywords": {
+    "$seen": true
+  },
+  "ago": "9d",
+  "subject": "Re: Offsite in Lisbon, first ideas",
+  "from": [
+    {
+      "name": "Marcus Webb",
+      "email": "marcus@lumen.dev"
+    }
+  ],
+  "to": [
+    {
+      "name": "Jane Cooper",
+      "email": "jane@northwind.io"
+    },
+    {
+      "name": "Marcus Webb",
+      "email": "marcus@lumen.dev"
+    },
+    {
+      "name": "Priya Natarajan",
+      "email": "priya@halcyon.health"
+    },
+    {
+      "name": "Tomás Ortega",
+      "email": "tomas@ortega.studio"
+    },
+    {
+      "name": "Denis Shepelin",
+      "email": "denis@schlau.example"
+    }
+  ],
+  "preview": "March works for me, as long as it's not the week of the release. Can we keep one afternoon free of agenda?  On Tue, Jane Cooper wrote: > I'd like to run the team offsite in Lisbon ",
+  "hasAttachment": false,
+  "size": 4208,
+  "messageId": [
+    "002-offsite-1@fixtures.schlau.example"
+  ]
+}

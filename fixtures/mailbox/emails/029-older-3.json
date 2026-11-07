@@ -1,0 +1,39 @@
+{
+  "id": "029-older-3",
+  "threadId": "t-older-3",
+  "mailboxIds": {
+    "archive": true
+  },
+  "keywords": {
+    "$seen": true
+  },
+  "ago": "200d",
+  "subject": "Quarterly planning: draft agenda",
+  "from": [
+    {
+      "name": "Jane Cooper",
+      "email": "jane@northwind.io"
+    }
+  ],
+  "to": [
+    {
+      "name": "Denis Shepelin",
+      "email": "denis@schlau.example"
+    }
+  ],
+  "preview": "Attached is the draft agenda for the planning session: roadmap, hiring, infrastructure budget.",
+  "hasAttachment": true,
+  "size": 124094,
+  "messageId": [
+    "029-older-3@fixtures.schlau.example"
+  ],
+  "attachments": [
+    {
+      "blobId": "blob-planning-agenda-pdf",
+      "name": "planning-agenda.pdf",
+      "type": "application/pdf",
+      "size": 82485,
+      "disposition": "attachment"
+    }
+  ]
+}

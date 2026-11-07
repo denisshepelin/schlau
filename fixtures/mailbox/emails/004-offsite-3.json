@@ -1,0 +1,46 @@
+{
+  "id": "004-offsite-3",
+  "threadId": "t-offsite",
+  "mailboxIds": {
+    "sent": true
+  },
+  "keywords": {
+    "$seen": true
+  },
+  "ago": "8d",
+  "subject": "Re: Offsite in Lisbon, first ideas",
+  "from": [
+    {
+      "name": "Denis Shepelin",
+      "email": "denis@schlau.example"
+    }
+  ],
+  "to": [
+    {
+      "name": "Jane Cooper",
+      "email": "jane@northwind.io"
+    },
+    {
+      "name": "Marcus Webb",
+      "email": "marcus@lumen.dev"
+    },
+    {
+      "name": "Priya Natarajan",
+      "email": "priya@halcyon.health"
+    },
+    {
+      "name": "Tomás Ortega",
+      "email": "tomas@ortega.studio"
+    },
+    {
+      "name": "Denis Shepelin",
+      "email": "denis@schlau.example"
+    }
+  ],
+  "preview": "Sounds great. I can own the agenda for day two (product strategy). The budget looks tight with flights from SF, let's check early.  Denis",
+  "hasAttachment": false,
+  "size": 4137,
+  "messageId": [
+    "004-offsite-3@fixtures.schlau.example"
+  ]
+}

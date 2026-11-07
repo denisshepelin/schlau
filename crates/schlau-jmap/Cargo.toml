@@ -1,0 +1,17 @@
+[package]
+name = "schlau-jmap"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+description = "Blocking JMAP client (RFC 8620 core, RFC 8621 mail) for schlau."
+
+[features]
+testing = []
+
+[dependencies]
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+thiserror = "2"
+ureq = "3"
+
+[dev-dependencies]

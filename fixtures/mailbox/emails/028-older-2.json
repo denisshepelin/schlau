@@ -1,0 +1,30 @@
+{
+  "id": "028-older-2",
+  "threadId": "t-older-2",
+  "mailboxIds": {
+    "archive": true
+  },
+  "keywords": {
+    "$seen": true
+  },
+  "ago": "120d",
+  "subject": "Hiring rubric for senior engineers",
+  "from": [
+    {
+      "name": "Priya Natarajan",
+      "email": "priya@halcyon.health"
+    }
+  ],
+  "to": [
+    {
+      "name": "Denis Shepelin",
+      "email": "denis@schlau.example"
+    }
+  ],
+  "preview": "Could you review the hiring rubric before I send it to the panel? I added a section on code review and one on writing.",
+  "hasAttachment": false,
+  "size": 4118,
+  "messageId": [
+    "028-older-2@fixtures.schlau.example"
+  ]
+}

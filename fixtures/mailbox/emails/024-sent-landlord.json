@@ -1,0 +1,30 @@
+{
+  "id": "024-sent-landlord",
+  "threadId": "t-sent-landlord",
+  "mailboxIds": {
+    "sent": true
+  },
+  "keywords": {
+    "$seen": true
+  },
+  "ago": "3d",
+  "subject": "Re: Nebenkostenabrechnung 2025",
+  "from": [
+    {
+      "name": "Denis Shepelin",
+      "email": "denis@schlau.example"
+    }
+  ],
+  "to": [
+    {
+      "name": "Hausverwaltung Krüger",
+      "email": "verwaltung@krueger-immobilien.example"
+    }
+  ],
+  "preview": "Sehr geehrte Damen und Herren,  vielen Dank. Der Termin am 20. November passt.  Mit freundlichen Grüßen Denis Shepelin",
+  "hasAttachment": false,
+  "size": 4118,
+  "messageId": [
+    "024-sent-landlord@fixtures.schlau.example"
+  ]
+}

@@ -1,0 +1,31 @@
+{
+  "id": "027-older-1",
+  "threadId": "t-older-1",
+  "mailboxIds": {
+    "archive": true
+  },
+  "keywords": {
+    "$seen": true,
+    "$flagged": true
+  },
+  "ago": "75d",
+  "subject": "Kangaroo project budget approved",
+  "from": [
+    {
+      "name": "Marcus Webb",
+      "email": "marcus@lumen.dev"
+    }
+  ],
+  "to": [
+    {
+      "name": "Denis Shepelin",
+      "email": "denis@schlau.example"
+    }
+  ],
+  "preview": "The kangaroo project budget is approved for Q1, with a small increase for hardware. Thanks for pushing this through.",
+  "hasAttachment": false,
+  "size": 4116,
+  "messageId": [
+    "027-older-1@fixtures.schlau.example"
+  ]
+}

@@ -1,0 +1,44 @@
+{
+  "id": "007-offsite-6",
+  "threadId": "t-offsite",
+  "mailboxIds": {
+    "inbox": true
+  },
+  "keywords": {},
+  "ago": "2h",
+  "subject": "Re: Offsite in Lisbon, first ideas",
+  "from": [
+    {
+      "name": "Priya Natarajan",
+      "email": "priya@halcyon.health"
+    }
+  ],
+  "to": [
+    {
+      "name": "Jane Cooper",
+      "email": "jane@northwind.io"
+    },
+    {
+      "name": "Marcus Webb",
+      "email": "marcus@lumen.dev"
+    },
+    {
+      "name": "Priya Natarajan",
+      "email": "priya@halcyon.health"
+    },
+    {
+      "name": "Tomás Ortega",
+      "email": "tomas@ortega.studio"
+    },
+    {
+      "name": "Denis Shepelin",
+      "email": "denis@schlau.example"
+    }
+  ],
+  "preview": "Held March 10–12 at LX Factory. Deposit is due next week; I need someone to approve the 30% deposit (1,080 EUR). Dietary list: two vegetarian, one vegan, one nut allergy.",
+  "hasAttachment": false,
+  "size": 4170,
+  "messageId": [
+    "007-offsite-6@fixtures.schlau.example"
+  ]
+}

@@ -1,0 +1,14 @@
+[package]
+name = "schlau-extract"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+description = "Text and image extraction from email attachments for schlau."
+
+[dependencies]
+hayro = "0.9"
+image = { version = "0.25.10", default-features = false, features = ["bmp", "gif", "jpeg", "png", "tiff", "webp"] }
+quick-xml = "0.42"
+thiserror = { workspace = true }
+zip = { version = "9.4", default-features = false, features = ["deflate-flate2-zlib-rs"] }
+

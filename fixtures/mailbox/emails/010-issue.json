@@ -1,0 +1,30 @@
+{
+  "id": "010-issue",
+  "threadId": "t-issue",
+  "mailboxIds": {
+    "inbox": true
+  },
+  "keywords": {
+    "$flagged": true
+  },
+  "ago": "1h",
+  "subject": "SCH-311 Search drops results when the query ends with a hyphen",
+  "from": [
+    {
+      "name": "Tracklane",
+      "email": "notify@tracklane.example"
+    }
+  ],
+  "to": [
+    {
+      "name": "Denis Shepelin",
+      "email": "denis@schlau.example"
+    }
+  ],
+  "preview": "",
+  "hasAttachment": false,
+  "size": 4457,
+  "messageId": [
+    "010-issue@fixtures.schlau.example"
+  ]
+}

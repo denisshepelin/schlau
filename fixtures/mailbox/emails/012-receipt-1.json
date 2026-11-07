@@ -1,0 +1,39 @@
+{
+  "id": "012-receipt-1",
+  "threadId": "t-receipt-1",
+  "mailboxIds": {
+    "receipts": true
+  },
+  "keywords": {
+    "$seen": true
+  },
+  "ago": "31d",
+  "subject": "Your receipt from Lumen Labs: $49.00",
+  "from": [
+    {
+      "name": "Paystream",
+      "email": "receipts@paystream.example"
+    }
+  ],
+  "to": [
+    {
+      "name": "Denis Shepelin",
+      "email": "denis@schlau.example"
+    }
+  ],
+  "preview": "",
+  "hasAttachment": true,
+  "size": 52799,
+  "messageId": [
+    "012-receipt-1@fixtures.schlau.example"
+  ],
+  "attachments": [
+    {
+      "blobId": "blob-invoice-INV-2026-4784-pdf",
+      "name": "invoice-INV-2026-4784.pdf",
+      "type": "application/pdf",
+      "size": 1982,
+      "disposition": "attachment"
+    }
+  ]
+}

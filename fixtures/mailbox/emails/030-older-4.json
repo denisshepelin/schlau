@@ -1,0 +1,39 @@
+{
+  "id": "030-older-4",
+  "threadId": "t-older-4",
+  "mailboxIds": {
+    "archive": true
+  },
+  "keywords": {
+    "$seen": true
+  },
+  "ago": "300d",
+  "subject": "Logo sketches, round two",
+  "from": [
+    {
+      "name": "Tomás Ortega",
+      "email": "tomas@ortega.studio"
+    }
+  ],
+  "to": [
+    {
+      "name": "Denis Shepelin",
+      "email": "denis@schlau.example"
+    }
+  ],
+  "preview": "Here are the new sketches. I went bluer and simpler, closer to the moodboard.",
+  "hasAttachment": true,
+  "size": 1304077,
+  "messageId": [
+    "030-older-4@fixtures.schlau.example"
+  ],
+  "attachments": [
+    {
+      "blobId": "blob-logo-sketches-v2-png",
+      "name": "logo-sketches-v2.png",
+      "type": "image/png",
+      "size": 17528,
+      "disposition": "attachment"
+    }
+  ]
+}

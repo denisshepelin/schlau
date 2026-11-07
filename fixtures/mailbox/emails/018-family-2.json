@@ -1,0 +1,31 @@
+{
+  "id": "018-family-2",
+  "threadId": "t-family",
+  "mailboxIds": {
+    "sent": true,
+    "family": true
+  },
+  "keywords": {
+    "$seen": true
+  },
+  "ago": "20h",
+  "subject": "Re: Bruno at the beach",
+  "from": [
+    {
+      "name": "Denis Shepelin",
+      "email": "denis@schlau.example"
+    }
+  ],
+  "to": [
+    {
+      "name": "Mom",
+      "email": "irina.shepelina@familymail.example"
+    }
+  ],
+  "preview": "He looks so happy! Is that the beach near Grandma's house? Send more photos :)  On Fri, Mom wrote: > Look who discovered the sea!",
+  "hasAttachment": false,
+  "size": 4129,
+  "messageId": [
+    "018-family-2@fixtures.schlau.example"
+  ]
+}

@@ -1,0 +1,26 @@
+[package]
+name = "schlau-sync"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+description = "Sync engine: keeps the local replica current with a JMAP account and replays the outbox."
+
+[dependencies]
+schlau-store = { path = "../schlau-store" }
+schlau-jmap = { path = "../schlau-jmap" }
+schlau-html = { path = "../schlau-html" }
+schlau-embed = { path = "../schlau-embed" }
+schlau-extract = { path = "../schlau-extract" }
+jiff = "0.2"
+serde = { workspace = true }
+serde_json = { workspace = true }
+thiserror = { workspace = true }
+
+[features]
+gemma = ["schlau-embed/gemma"]
+metal = ["gemma", "schlau-embed/metal"]
+
+[dev-dependencies]
+schlau-jmap = { path = "../schlau-jmap", features = ["testing"] }
+tempfile = "3"
+schlau-search = { path = "../schlau-search" }

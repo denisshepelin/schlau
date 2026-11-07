@@ -1,0 +1,49 @@
+{
+  "accountId": "u1a2b3c4d",
+  "state": "J7392",
+  "list": [
+    {
+      "id": "M1a",
+      "blobId": "G9e8d7c6b5a4f3e2d1c0b9a8f7e6d5c4b3a2f1e0d",
+      "threadId": "T5f",
+      "mailboxIds": { "P-2a": true },
+      "keywords": { "$flagged": true },
+      "size": 48213,
+      "receivedAt": "2026-11-06T09:14:27Z",
+      "messageId": ["CAF=abc123@mail.example.com"],
+      "inReplyTo": null,
+      "references": null,
+      "sender": null,
+      "from": [{ "name": "Acme Billing", "email": "billing@acme.example" }],
+      "to": [{ "name": "Jane Doe", "email": "jane@fastmail.com" }],
+      "cc": [],
+      "bcc": null,
+      "replyTo": null,
+      "subject": "Your October invoice",
+      "sentAt": "2026-11-06T10:14:20+01:00",
+      "hasAttachment": true,
+      "preview": "Hi Jane, Your invoice for October is attached.",
+      "bodyValues": {
+        "1": { "value": "Hi Jane,\n\nYour invoice for October is attached.\n", "isEncodingProblem": false, "isTruncated": false },
+        "2": { "value": "<p>Hi Jane,</p><p>Your invoice for October is attached.</p><img src=\"cid:logo@example.com\">", "isEncodingProblem": false, "isTruncated": false }
+      },
+      "textBody": [
+        { "partId": "1", "blobId": "G1111", "size": 48, "name": null, "type": "text/plain", "charset": "utf-8", "disposition": null, "cid": null }
+      ],
+      "htmlBody": [
+        { "partId": "2", "blobId": "G2222", "size": 110, "name": null, "type": "text/html", "charset": "utf-8", "disposition": null, "cid": null },
+        { "partId": "3", "blobId": "G3333", "size": 4021, "name": "logo.png", "type": "image/png", "charset": null, "disposition": "inline", "cid": "logo@example.com" }
+      ],
+      "attachments": [
+        { "partId": "4", "blobId": "G7f3e2a1b0c9d8e7f6a5b4c3d2e1f0a9b8c7d6e5f", "size": 40112, "name": "invoice-2026-10.pdf", "type": "application/pdf", "charset": null, "disposition": "attachment", "cid": null },
+        { "partId": "3", "blobId": "G3333", "size": 4021, "name": "logo.png", "type": "image/png", "charset": null, "disposition": "inline", "cid": "logo@example.com" }
+      ]
+    },
+    {
+      "id": "M2b",
+      "mailboxIds": { "P-2a": true, "P-7c": true },
+      "keywords": { "$seen": true }
+    }
+  ],
+  "notFound": []
+}

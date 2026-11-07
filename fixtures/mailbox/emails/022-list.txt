@@ -1,0 +1,13 @@
+> Is it safe to DELETE from a contentless_delete=1 table while readers are
+> running in WAL mode?
+
+Yes. Readers keep their snapshot; the delete lands for the next transaction.
+What you can't do on a contentless table is read the column values back,
+so keep the source text elsewhere if you need snippets.
+
+> And does 'optimize' block writers?
+
+It takes the write lock for its duration. Run it when idle.
+
+-- 
+D.

@@ -1,0 +1,55 @@
+{
+  "mailboxes": [
+    {
+      "id": "inbox",
+      "name": "Inbox",
+      "role": "inbox",
+      "sortOrder": 1
+    },
+    {
+      "id": "archive",
+      "name": "Archive",
+      "role": "archive",
+      "sortOrder": 2
+    },
+    {
+      "id": "drafts",
+      "name": "Drafts",
+      "role": "drafts",
+      "sortOrder": 3
+    },
+    {
+      "id": "sent",
+      "name": "Sent",
+      "role": "sent",
+      "sortOrder": 4
+    },
+    {
+      "id": "junk",
+      "name": "Spam",
+      "role": "junk",
+      "sortOrder": 5
+    },
+    {
+      "id": "trash",
+      "name": "Trash",
+      "role": "trash",
+      "sortOrder": 6
+    },
+    {
+      "id": "receipts",
+      "name": "Receipts",
+      "sortOrder": 10
+    },
+    {
+      "id": "travel",
+      "name": "Travel",
+      "sortOrder": 11
+    },
+    {
+      "id": "family",
+      "name": "Family",
+      "sortOrder": 12
+    }
+  ]
+}

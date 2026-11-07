@@ -1,0 +1,28 @@
+{
+  "id": "014-newsletter",
+  "threadId": "t-news",
+  "mailboxIds": {
+    "inbox": true
+  },
+  "keywords": {},
+  "ago": "7h",
+  "subject": "Brightline Weekly #212: the quiet return of local-first software",
+  "from": [
+    {
+      "name": "Brightline Weekly",
+      "email": "hello@brightline.example"
+    }
+  ],
+  "to": [
+    {
+      "name": "Denis Shepelin",
+      "email": "denis@schlau.example"
+    }
+  ],
+  "preview": "",
+  "hasAttachment": false,
+  "size": 5420,
+  "messageId": [
+    "014-newsletter@fixtures.schlau.example"
+  ]
+}

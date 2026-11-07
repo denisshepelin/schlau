@@ -1,0 +1,26 @@
+[package]
+name = "schlau-gemma"
+version.workspace = true
+edition = "2021"
+license = "MIT OR Apache-2.0"
+description = "EmbeddingGemma 2 (text, image, audio embeddings in one space) on candle. Vendored from mofumail/embeddinggemma-2-candle."
+
+[dependencies]
+candle = { package = "candle-core", version = "0.11" }
+candle-nn = "0.11"
+image = { version = "0.25", default-features = false, features = ["jpeg", "png", "webp"] }
+rustfft = "6"
+serde = { workspace = true }
+serde_json = { workspace = true }
+thiserror = { workspace = true }
+tokenizers = { version = "0.22", default-features = false, features = ["onig"] }
+
+[dev-dependencies]
+anyhow = { workspace = true }
+hound = "3.5"
+
+[features]
+default = []
+metal = ["candle/metal", "candle-nn/metal"]
+accelerate = ["candle/accelerate", "candle-nn/accelerate"]
+cuda = ["candle/cuda", "candle-nn/cuda"]

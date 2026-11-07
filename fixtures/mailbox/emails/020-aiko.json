@@ -1,0 +1,30 @@
+{
+  "id": "020-aiko",
+  "threadId": "t-aiko",
+  "mailboxIds": {
+    "inbox": true
+  },
+  "keywords": {
+    "$seen": true
+  },
+  "ago": "5d",
+  "subject": "来週の打ち合わせについて",
+  "from": [
+    {
+      "name": "Aiko Tanaka",
+      "email": "aiko@kumo.jp"
+    }
+  ],
+  "to": [
+    {
+      "name": "Denis Shepelin",
+      "email": "denis@schlau.example"
+    }
+  ],
+  "preview": "Denisさん  お疲れさまです。来週の打ち合わせですが、火曜日の午後3時（日本時間）はいかがでしょうか。検索機能のデモを楽しみにしています。  よろしくお願いいたします。 田中",
+  "hasAttachment": false,
+  "size": 4089,
+  "messageId": [
+    "020-aiko@fixtures.schlau.example"
+  ]
+}

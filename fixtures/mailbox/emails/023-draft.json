@@ -1,0 +1,31 @@
+{
+  "id": "023-draft",
+  "threadId": "t-draft",
+  "mailboxIds": {
+    "drafts": true
+  },
+  "keywords": {
+    "$seen": true,
+    "$draft": true
+  },
+  "ago": "30m",
+  "subject": "Day two agenda (draft)",
+  "from": [
+    {
+      "name": "Denis Shepelin",
+      "email": "denis@schlau.example"
+    }
+  ],
+  "to": [
+    {
+      "name": "Jane Cooper",
+      "email": "jane@northwind.io"
+    }
+  ],
+  "preview": "Day two: product strategy  09:30 Where we are 10:30 Customer interviews: what we heard 13:00 Lunch 14:00 Bets for the next two quarters 16:00 Free afternoon",
+  "hasAttachment": false,
+  "size": 4156,
+  "messageId": [
+    "023-draft@fixtures.schlau.example"
+  ]
+}

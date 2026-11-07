@@ -1,0 +1,45 @@
+{
+  "id": "017-family-1",
+  "threadId": "t-family",
+  "mailboxIds": {
+    "family": true,
+    "inbox": true
+  },
+  "keywords": {},
+  "ago": "1d",
+  "subject": "Bruno at the beach",
+  "from": [
+    {
+      "name": "Mom",
+      "email": "irina.shepelina@familymail.example"
+    }
+  ],
+  "to": [
+    {
+      "name": "Denis Shepelin",
+      "email": "denis@schlau.example"
+    }
+  ],
+  "preview": "Look who discovered the sea! Bruno ran straight into the waves and came back with a stick twice his size. Dad says hi.  Love, Mom",
+  "hasAttachment": true,
+  "size": 4304129,
+  "messageId": [
+    "017-family-1@fixtures.schlau.example"
+  ],
+  "attachments": [
+    {
+      "blobId": "blob-bruno-beach-jpg",
+      "name": "bruno-beach.jpg",
+      "type": "image/jpeg",
+      "size": 804008,
+      "disposition": "attachment"
+    },
+    {
+      "blobId": "blob-bruno-stick-jpg",
+      "name": "bruno-stick.jpg",
+      "type": "image/jpeg",
+      "size": 200312,
+      "disposition": "attachment"
+    }
+  ]
+}

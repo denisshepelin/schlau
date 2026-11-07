@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html>
+<head><meta charset="utf-8"><title>Your receipt from Example Books</title>
+<style>
+.receipt { font-family: Arial, sans-serif; color: #333; }
+.logo { background: url(cid:logo-bg@example.books) no-repeat; }
+td.amount { text-align: right; }
+</style>
+</head>
+<body>
+<div class="receipt">
+<table width="100%" cellpadding="0" cellspacing="0">
+<tr><td class="logo"><img src="cid:logo@example.books" alt="Example Books" width="180" height="48"></td></tr>
+<tr><td><h2>Receipt #EB-20261107-0042</h2><p>Thanks for your order, Sam. Paid with Visa ending 4242 on 7 November 2026.</p></td></tr>
+</table>
+<table width="100%" cellpadding="4" cellspacing="0" border="1">
+<thead><tr><th>Item</th><th>Qty</th><th>Price</th></tr></thead>
+<tbody>
+<tr><td><img src="cid:item-1%40example.books" alt="Cover of The Rust Book" width="40" height="60"> The Rust Programming Language</td><td>1</td><td class="amount">$39.95</td></tr>
+<tr><td><img src="CID:item-2@example.books" alt="Cover of Designing Data-Intensive Applications" width="40" height="60"> Designing Data-Intensive Applications</td><td>1</td><td class="amount">$44.99</td></tr>
+<tr><td colspan="2"><strong>Total</strong></td><td class="amount"><strong>$84.94</strong></td></tr>
+</tbody>
+</table>
+<p>Questions? Reply to this email or visit <a href="https://help.example.books/orders/EB-20261107-0042">your order page</a>.</p>
+<p><img src="cid:missing@example.books" alt="Unknown attachment" width="10" height="10"></p>
+<p><img src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==" alt="badge" width="16" height="16"></p>
+</div>
+</body>
+</html>

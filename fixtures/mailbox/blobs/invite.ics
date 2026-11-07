@@ -1,0 +1,15 @@
+BEGIN:VCALENDAR
+VERSION:2.0
+PRODID:-//Okafor Design//Calendar//EN
+METHOD:REQUEST
+BEGIN:VEVENT
+UID:design-review-2026@okafor.co
+DTSTART;TZID=Europe/Berlin:20261112T140000
+DTEND;TZID=Europe/Berlin:20261112T150000
+SUMMARY:Design review
+LOCATION:Video call
+DESCRIPTION:Agenda: reading view line height\, command palette shortcuts\, f
+ ewer borders.
+ORGANIZER;CN=Sam Okafor:mailto:sam@okafor.co
+END:VEVENT
+END:VCALENDAR

@@ -1,0 +1,46 @@
+{
+  "id": "003-offsite-2",
+  "threadId": "t-offsite",
+  "mailboxIds": {
+    "inbox": true
+  },
+  "keywords": {
+    "$seen": true
+  },
+  "ago": "8d",
+  "subject": "Re: Offsite in Lisbon, first ideas",
+  "from": [
+    {
+      "name": "Priya Natarajan",
+      "email": "priya@halcyon.health"
+    }
+  ],
+  "to": [
+    {
+      "name": "Jane Cooper",
+      "email": "jane@northwind.io"
+    },
+    {
+      "name": "Marcus Webb",
+      "email": "marcus@lumen.dev"
+    },
+    {
+      "name": "Priya Natarajan",
+      "email": "priya@halcyon.health"
+    },
+    {
+      "name": "Tomás Ortega",
+      "email": "tomas@ortega.studio"
+    },
+    {
+      "name": "Denis Shepelin",
+      "email": "denis@schlau.example"
+    }
+  ],
+  "preview": "+1 to Lisbon. I can look into venues near Alfama. Is anyone vegetarian or vegan? I'll collect dietary needs.  Priya",
+  "hasAttachment": false,
+  "size": 4115,
+  "messageId": [
+    "003-offsite-2@fixtures.schlau.example"
+  ]
+}

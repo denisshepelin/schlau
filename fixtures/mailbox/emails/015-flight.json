@@ -1,0 +1,41 @@
+{
+  "id": "015-flight",
+  "threadId": "t-flight",
+  "mailboxIds": {
+    "travel": true,
+    "inbox": true
+  },
+  "keywords": {
+    "$seen": true,
+    "$flagged": true
+  },
+  "ago": "2d",
+  "subject": "Booking confirmed: SFO → LIS, March 9 (ref K7Q2ZP)",
+  "from": [
+    {
+      "name": "Northwind Air",
+      "email": "bookings@northwind-air.example"
+    }
+  ],
+  "to": [
+    {
+      "name": "Denis Shepelin",
+      "email": "denis@schlau.example"
+    }
+  ],
+  "preview": "",
+  "hasAttachment": true,
+  "size": 100858,
+  "messageId": [
+    "015-flight@fixtures.schlau.example"
+  ],
+  "attachments": [
+    {
+      "blobId": "blob-e-ticket-K7Q2ZP-pdf",
+      "name": "e-ticket-K7Q2ZP.pdf",
+      "type": "application/pdf",
+      "size": 2059,
+      "disposition": "attachment"
+    }
+  ]
+}

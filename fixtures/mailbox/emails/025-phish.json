@@ -1,0 +1,28 @@
+{
+  "id": "025-phish",
+  "threadId": "t-phish",
+  "mailboxIds": {
+    "junk": true
+  },
+  "keywords": {},
+  "ago": "9h",
+  "subject": "Action required: your account will be suspended",
+  "from": [
+    {
+      "name": "Account Security",
+      "email": "security@paystream-verify.example"
+    }
+  ],
+  "to": [
+    {
+      "name": "Denis Shepelin",
+      "email": "denis@schlau.example"
+    }
+  ],
+  "preview": "",
+  "hasAttachment": false,
+  "size": 4512,
+  "messageId": [
+    "025-phish@fixtures.schlau.example"
+  ]
+}

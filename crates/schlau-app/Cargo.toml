@@ -1,0 +1,30 @@
+[package]
+name = "schlau-app"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+description = "schlau: a fast, keyboard-first mail client for Fastmail and JMAP."
+
+[[bin]]
+name = "schlau"
+path = "src/main.rs"
+
+[dependencies]
+rune = { workspace = true }
+rune-kit = { workspace = true }
+schlau-store = { path = "../schlau-store" }
+schlau-sync = { path = "../schlau-sync", features = ["gemma"] }
+schlau-jmap = { path = "../schlau-jmap" }
+schlau-search = { path = "../schlau-search" }
+schlau-embed = { path = "../schlau-embed" }
+schlau-html = { path = "../schlau-html" }
+jiff = "0.2"
+
+[target.'cfg(target_os = "macos")'.dependencies]
+schlau-sync = { path = "../schlau-sync", features = ["metal"] }
+objc2 = "0.6"
+objc2-foundation = "0.3"
+objc2-app-kit = "0.3"
+objc2-web-kit = "0.3"
+block2 = "0.6"
+raw-window-handle = "0.6"

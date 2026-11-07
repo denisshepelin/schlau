@@ -1,0 +1,37 @@
+{
+  "id": "019-landlord",
+  "threadId": "t-landlord",
+  "mailboxIds": {
+    "inbox": true
+  },
+  "keywords": {},
+  "ago": "4d",
+  "subject": "Nebenkostenabrechnung 2025 und Wartung der Heizung",
+  "from": [
+    {
+      "name": "Hausverwaltung Krüger",
+      "email": "verwaltung@krueger-immobilien.example"
+    }
+  ],
+  "to": [
+    {
+      "name": "Denis Shepelin",
+      "email": "denis@schlau.example"
+    }
+  ],
+  "preview": "Sehr geehrter Herr Shepelin,  anbei erhalten Sie die Nebenkostenabrechnung für 2025. Es ergibt sich eine Nachzahlung von 142,80 EUR, fällig zum 15. Dezember.  Außerdem findet am 20",
+  "hasAttachment": true,
+  "size": 214346,
+  "messageId": [
+    "019-landlord@fixtures.schlau.example"
+  ],
+  "attachments": [
+    {
+      "blobId": "blob-Nebenkostenabrechnung-2025-pdf",
+      "name": "Nebenkostenabrechnung-2025.pdf",
+      "type": "application/pdf",
+      "size": 2192,
+      "disposition": "attachment"
+    }
+  ]
+}

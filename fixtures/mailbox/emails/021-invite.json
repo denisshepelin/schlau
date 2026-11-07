@@ -1,0 +1,37 @@
+{
+  "id": "021-invite",
+  "threadId": "t-invite",
+  "mailboxIds": {
+    "inbox": true
+  },
+  "keywords": {},
+  "ago": "3h",
+  "subject": "Invitation: Design review · Thu 14:00–15:00",
+  "from": [
+    {
+      "name": "Sam Okafor",
+      "email": "sam@okafor.co"
+    }
+  ],
+  "to": [
+    {
+      "name": "Denis Shepelin",
+      "email": "denis@schlau.example"
+    }
+  ],
+  "preview": "Sam Okafor invited you to: Design review Thursday 14:00–15:00 (CET) Where: Video call  Agenda: reading view line height, command palette shortcuts, fewer borders.",
+  "hasAttachment": true,
+  "size": 6262,
+  "messageId": [
+    "021-invite@fixtures.schlau.example"
+  ],
+  "attachments": [
+    {
+      "blobId": "blob-invite-ics",
+      "name": "invite.ics",
+      "type": "text/calendar",
+      "size": 430,
+      "disposition": "attachment"
+    }
+  ]
+}

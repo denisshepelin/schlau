@@ -1,0 +1,46 @@
+{
+  "id": "006-offsite-5",
+  "threadId": "t-offsite",
+  "mailboxIds": {
+    "inbox": true
+  },
+  "keywords": {
+    "$seen": true
+  },
+  "ago": "3d",
+  "subject": "Re: Offsite in Lisbon, first ideas",
+  "from": [
+    {
+      "name": "Jane Cooper",
+      "email": "jane@northwind.io"
+    }
+  ],
+  "to": [
+    {
+      "name": "Jane Cooper",
+      "email": "jane@northwind.io"
+    },
+    {
+      "name": "Marcus Webb",
+      "email": "marcus@lumen.dev"
+    },
+    {
+      "name": "Priya Natarajan",
+      "email": "priya@halcyon.health"
+    },
+    {
+      "name": "Tomás Ortega",
+      "email": "tomas@ortega.studio"
+    },
+    {
+      "name": "Denis Shepelin",
+      "email": "denis@schlau.example"
+    }
+  ],
+  "preview": "The LX Factory space looks perfect. Priya, can you hold March 10–12? Denis, could you draft the day-two agenda by Friday?",
+  "hasAttachment": false,
+  "size": 4121,
+  "messageId": [
+    "006-offsite-5@fixtures.schlau.example"
+  ]
+}

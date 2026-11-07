@@ -1,0 +1,46 @@
+{
+  "id": "001-offsite-0",
+  "threadId": "t-offsite",
+  "mailboxIds": {
+    "inbox": true
+  },
+  "keywords": {
+    "$seen": true
+  },
+  "ago": "9d",
+  "subject": "Offsite in Lisbon, first ideas",
+  "from": [
+    {
+      "name": "Jane Cooper",
+      "email": "jane@northwind.io"
+    }
+  ],
+  "to": [
+    {
+      "name": "Jane Cooper",
+      "email": "jane@northwind.io"
+    },
+    {
+      "name": "Marcus Webb",
+      "email": "marcus@lumen.dev"
+    },
+    {
+      "name": "Priya Natarajan",
+      "email": "priya@halcyon.health"
+    },
+    {
+      "name": "Tomás Ortega",
+      "email": "tomas@ortega.studio"
+    },
+    {
+      "name": "Denis Shepelin",
+      "email": "denis@schlau.example"
+    }
+  ],
+  "preview": "Hi all,  I'd like to run the team offsite in Lisbon in the second week of March. Three days, about twelve people. Budget is roughly 18k EUR including flights.  Thoughts on dates? I",
+  "hasAttachment": false,
+  "size": 4202,
+  "messageId": [
+    "001-offsite-0@fixtures.schlau.example"
+  ]
+}

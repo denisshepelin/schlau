@@ -1,0 +1,33 @@
+[package]
+name = "schlau-embed"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+description = "Local semantic embeddings (Model2Vec) and brute-force vector search for schlau."
+
+[features]
+default = []
+gemma = ["dep:schlau-gemma", "dep:candle-core", "dep:image"]
+metal = ["gemma", "schlau-gemma/metal", "candle-core/metal"]
+
+[dependencies]
+half = "2.7"
+memmap2 = "0.9"
+model2vec-rs = { version = "0.4", default-features = false, features = ["fancy-regex"] }
+rayon = "1.12"
+sha2 = "0.10"
+thiserror = { workspace = true }
+ureq = { version = "3.1", features = ["json"] }
+base64 = "0.22"
+serde = { workspace = true }
+serde_json = { workspace = true }
+candle-core = { version = "0.11", optional = true }
+schlau-gemma = { path = "../schlau-gemma", optional = true }
+image = { version = "0.25", default-features = false, features = ["jpeg", "png", "webp"], optional = true }
+
+[dev-dependencies]
+tempfile = "3"
+
+[[example]]
+name = "media"
+required-features = ["gemma"]

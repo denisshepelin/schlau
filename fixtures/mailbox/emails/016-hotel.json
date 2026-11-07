@@ -1,0 +1,30 @@
+{
+  "id": "016-hotel",
+  "threadId": "t-hotel",
+  "mailboxIds": {
+    "travel": true
+  },
+  "keywords": {
+    "$seen": true
+  },
+  "ago": "2d",
+  "subject": "Reserva confirmada · 9–13 março",
+  "from": [
+    {
+      "name": "Casa do Rio",
+      "email": "reservas@casadorio.example"
+    }
+  ],
+  "to": [
+    {
+      "name": "Denis Shepelin",
+      "email": "denis@schlau.example"
+    }
+  ],
+  "preview": "Olá Denis,  A sua reserva está confirmada: quarto duplo com vista para o rio, de 9 a 13 de março. Check-in a partir das 15h.  Até breve! Casa do Rio",
+  "hasAttachment": false,
+  "size": 4148,
+  "messageId": [
+    "016-hotel@fixtures.schlau.example"
+  ]
+}

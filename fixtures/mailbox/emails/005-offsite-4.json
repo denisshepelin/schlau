@@ -1,0 +1,62 @@
+{
+  "id": "005-offsite-4",
+  "threadId": "t-offsite",
+  "mailboxIds": {
+    "inbox": true
+  },
+  "keywords": {
+    "$seen": true
+  },
+  "ago": "6d",
+  "subject": "Re: Offsite in Lisbon, first ideas",
+  "from": [
+    {
+      "name": "Tomás Ortega",
+      "email": "tomas@ortega.studio"
+    }
+  ],
+  "to": [
+    {
+      "name": "Jane Cooper",
+      "email": "jane@northwind.io"
+    },
+    {
+      "name": "Marcus Webb",
+      "email": "marcus@lumen.dev"
+    },
+    {
+      "name": "Priya Natarajan",
+      "email": "priya@halcyon.health"
+    },
+    {
+      "name": "Tomás Ortega",
+      "email": "tomas@ortega.studio"
+    },
+    {
+      "name": "Denis Shepelin",
+      "email": "denis@schlau.example"
+    }
+  ],
+  "preview": "Found a studio space in LX Factory: big tables, a terrace, projector included. 1,200 EUR per day. Photos attached.  Tomás",
+  "hasAttachment": true,
+  "size": 1456121,
+  "messageId": [
+    "005-offsite-4@fixtures.schlau.example"
+  ],
+  "attachments": [
+    {
+      "blobId": "blob-lx-factory-terrace-jpg",
+      "name": "lx-factory-terrace.jpg",
+      "type": "image/jpeg",
+      "size": 609824,
+      "disposition": "attachment"
+    },
+    {
+      "blobId": "blob-lx-factory-room-jpg",
+      "name": "lx-factory-room.jpg",
+      "type": "image/jpeg",
+      "size": 151760,
+      "disposition": "attachment"
+    }
+  ]
+}

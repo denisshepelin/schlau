@@ -1,0 +1,30 @@
+{
+  "id": "022-list",
+  "threadId": "t-list",
+  "mailboxIds": {
+    "inbox": true
+  },
+  "keywords": {
+    "$seen": true
+  },
+  "ago": "6h",
+  "subject": "Re: FTS5 contentless_delete and rebuilds",
+  "from": [
+    {
+      "name": "sqlite-users digest",
+      "email": "sqlite-users@lists.example"
+    }
+  ],
+  "to": [
+    {
+      "name": "Denis Shepelin",
+      "email": "denis@schlau.example"
+    }
+  ],
+  "preview": "> Is it safe to DELETE from a contentless_delete=1 table while readers are > running in WAL mode?  Yes. Readers keep their snapshot; the delete lands for the next transaction. What",
+  "hasAttachment": false,
+  "size": 4411,
+  "messageId": [
+    "022-list@fixtures.schlau.example"
+  ]
+}

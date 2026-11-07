@@ -1,0 +1,30 @@
+{
+  "id": "008-pr-opened",
+  "threadId": "t-pr",
+  "mailboxIds": {
+    "inbox": true
+  },
+  "keywords": {
+    "$seen": true
+  },
+  "ago": "5h",
+  "subject": "[schlau] Make keyset paging stable when threads share a timestamp (#142)",
+  "from": [
+    {
+      "name": "Codehub",
+      "email": "notifications@codehub.example"
+    }
+  ],
+  "to": [
+    {
+      "name": "Denis Shepelin",
+      "email": "denis@schlau.example"
+    }
+  ],
+  "preview": "",
+  "hasAttachment": false,
+  "size": 4573,
+  "messageId": [
+    "008-pr-opened@fixtures.schlau.example"
+  ]
+}

