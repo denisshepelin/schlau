@@ -42,6 +42,19 @@ impl Reader {
             .optional()?)
     }
 
+    /// The names the account sends as: the senders of what is in Sent, most used first.
+    pub fn own_names(&self) -> Result<Vec<String>> {
+        let mut stmt = self.conn.prepare_cached(
+            "SELECT m.from_name FROM messages m
+             JOIN message_mailboxes mm ON mm.message = m.rowid
+             JOIN mailboxes b ON b.id = mm.mailbox_id
+             WHERE b.role = 'sent' AND m.from_name != ''
+             GROUP BY m.from_name ORDER BY count(*) DESC LIMIT 5",
+        )?;
+        let rows = stmt.query_map([], |r| r.get(0))?;
+        Ok(rows.collect::<rusqlite::Result<_>>()?)
+    }
+
     /// A page of a mailbox's conversations, newest first, after `cursor` (keyset paging).
     pub fn thread_page(&self, mailbox_id: &str, cursor: Option<PageCursor<'_>>, limit: usize) -> Result<Vec<ThreadRow>> {
         let limit = limit as i64;

@@ -30,6 +30,8 @@ pub const COMMANDS: &[Command] = &[
     Command { id: "half-page-up", title: "Half a page up", keys: &["ctrl+u"], run: |s, tx| down(s, Scroll::Pages(-0.5), tx) },
     Command { id: "page-down", title: "Page down", keys: &["pagedown", "ctrl+f"], run: |s, tx| down(s, Scroll::Pages(1.0), tx) },
     Command { id: "page-up", title: "Page up", keys: &["pageup", "ctrl+b"], run: |s, tx| down(s, Scroll::Pages(-1.0), tx) },
+    Command { id: "next-period", title: "Next period (today, yesterday, this week, this month, then by month)", keys: &["] d", "] ]"], run: |s, tx| jump_period(s, 1, tx) },
+    Command { id: "previous-period", title: "Previous period, or the start of this one", keys: &["[ d", "[ ["], run: |s, tx| jump_period(s, -1, tx) },
     Command { id: "top", title: "Top: start of the conversation, or the newest one", keys: &["g g", "home"], run: |s, tx| down(s, Scroll::Top, tx) },
     Command { id: "bottom", title: "Bottom: end of the conversation, or the oldest loaded one", keys: &["shift+g", "end"], run: |s, tx| down(s, Scroll::Bottom, tx) },
     Command { id: "open", title: "Open conversation", keys: &["enter", "o", "l"], run: |s, _| s.open_selected() },
@@ -63,17 +65,21 @@ pub enum Entry {
     Mailbox(String),
 }
 
-/// Finds the command bound to a key event, handling two-key chords that start with `g`.
+/// Keys that start a two-key chord: `g i`, `] d`.
+const CHORD_PREFIXES: [char; 3] = ['g', '[', ']'];
+
+/// Finds the command bound to a key event, handling two-key chords.
 pub fn dispatch(s: &mut Ui, ev: &KeyEvent, tx: &mut Tx) -> bool {
     let typed = describe(ev);
     let Some(typed) = typed else { return false };
-    let sequence = match s.pending_chord.take() {
-        Some(prefix) => format!("{prefix} {typed}"),
-        None if typed == "g" => {
-            s.pending_chord = Some('g');
+    let prefix = typed.chars().next().filter(|c| typed.len() == 1 && CHORD_PREFIXES.contains(c));
+    let sequence = match (s.pending_chord.take(), prefix) {
+        (Some(pending), _) => format!("{pending} {typed}"),
+        (None, Some(prefix)) => {
+            s.pending_chord = Some(prefix);
             return true;
         }
-        None => typed,
+        (None, None) => typed,
     };
     match COMMANDS.iter().find(|c| c.keys.contains(&sequence.as_str())) {
         Some(command) => {
@@ -184,6 +190,24 @@ fn open_search(s: &mut Ui, _: &mut Tx) {
     let mut query = TextEdit::new("");
     query.focused = true;
     s.search = Some(Search { query, results: None, picked: 0, open_when_ready: false });
+}
+
+/// Scrolls the list so row `key` sits at its top, its period heading first. Revealing mounts a
+/// row that is far away; the next frame places it.
+pub fn reveal_at_top(s: &mut Ui, key: String, tx: &mut Tx) {
+    tx.scroll_into_view(key.clone());
+    s.pending_top = Some(key);
+    tx.wake_after(std::time::Duration::from_millis(16));
+}
+
+/// `]d` and `[d`: the first conversation of the next period, or back to the start of this one. In
+/// an open conversation, opens it.
+fn jump_period(s: &mut Ui, delta: isize, tx: &mut Tx) {
+    let Some(key) = s.jump_period(delta) else { return };
+    match s.thread {
+        Some(_) => s.open_selected(),
+        None => reveal_at_top(s, key, tx),
+    }
 }
 
 fn next(s: &mut Ui, delta: isize) {
@@ -427,6 +451,18 @@ mod tests {
         assert_eq!(key("#", Mods { shift: true, ..Mods::default() }).as_deref(), Some("#"));
         assert_eq!(key("d", Mods { ctrl: true, ..Mods::default() }).as_deref(), Some("ctrl+d"), "not archive's e or a plain d");
         assert_eq!(describe(&Key::PageDown.into()).as_deref(), Some("pagedown"));
+        assert_eq!(key("]", Mods::default()).as_deref(), Some("]"));
+    }
+
+    #[test]
+    fn brackets_start_chords_for_periods() {
+        let ids = |keys: &str| COMMANDS.iter().filter(|c| c.keys.contains(&keys)).map(|c| c.id).collect::<Vec<_>>();
+        assert_eq!(ids("] d"), ["next-period"]);
+        assert_eq!(ids("[ ["), ["previous-period"]);
+        let prefixes: std::collections::BTreeSet<char> =
+            COMMANDS.iter().flat_map(|c| c.keys.iter()).filter_map(|k| k.split_once(' ')).filter_map(|(p, _)| p.chars().next()).collect();
+        assert!(prefixes.iter().all(|p| CHORD_PREFIXES.contains(p)), "{prefixes:?}");
+        assert!(COMMANDS.iter().flat_map(|c| c.keys.iter()).all(|k| !CHORD_PREFIXES.iter().any(|p| *k == p.to_string())), "a prefix alone is no command");
     }
 
     #[test]

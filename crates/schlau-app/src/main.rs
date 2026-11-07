@@ -2,6 +2,7 @@ mod account;
 mod commands;
 mod demo;
 mod format;
+mod periods;
 mod preview;
 mod quicklook;
 mod rank;
@@ -144,6 +145,10 @@ fn poll(s: &mut Ui, clock: f64, tx: &mut Tx) -> bool {
     if settings_pane::focus_pending(s) {
         changed = true;
     }
+    if let Some(key) = s.pending_top.take() {
+        tx.scroll_key_to(key, 0.0);
+        changed = true;
+    }
     if let Some(key) = s.pending_scroll.take() {
         tx.scroll_into_view(key);
         changed = true;
@@ -235,6 +240,7 @@ fn main() {
         poll: Some(poll),
         on_key: Some(on_key),
         min_size: Some((720.0, 480.0)),
+        fonts: theme::FONTS,
         ..AppSpec::new("schlau", (1180.0, 780.0), || unreachable!("state comes from init"), view::view)
     };
     let connect = (!args.offline()).then(account::Account::from_environment).flatten().map(account::Account::connect);

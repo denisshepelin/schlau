@@ -37,6 +37,7 @@ fn threads_land_in_their_mailboxes_newest_first() {
     assert!(reader.thread_page("junk", None, 10).unwrap().iter().any(|r| r.thread_id == "t-phish"));
     assert!(inbox.iter().all(|r| r.thread_id != "t-phish"), "spam stays out of the inbox");
     assert_eq!(reader.thread_page("drafts", None, 10).unwrap().len(), 1);
+    assert_eq!(reader.own_names().unwrap(), ["Denis Shepelin"], "the sender of what is in Sent");
 }
 
 #[test]

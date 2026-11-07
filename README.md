@@ -45,6 +45,7 @@ The icon is `assets/icon/schlau.icns`, made from the artwork in `assets/icon/sch
 | `n` / `p` | Next / previous message in the open conversation |
 | `⌃D` / `⌃U` | Half a page down / up (ten rows in the list) |
 | `⌃F` / `⌃B`, `PgDn` / `PgUp` | A page down / up (twenty rows in the list) |
+| `]d` / `[d` (or `]]` / `[[`) | Next period / start of this period, then the previous one (today, yesterday, this week, this month, then by month). The periods in the top bar jump there too |
 | `g g` / `⇧G`, `Home` / `End` | Top / bottom of the conversation, or the newest / oldest loaded one in the list |
 | `↵`, `o`, `l` or `→` | Open |
 | `esc`, `u`, `h` or `←` | Back |

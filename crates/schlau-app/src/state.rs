@@ -1,4 +1,4 @@
-use std::cell::Cell;
+use std::cell::{Cell, RefCell};
 use std::collections::HashMap;
 use std::path::PathBuf;
 use std::rc::Rc;
@@ -10,9 +10,13 @@ use std::sync::Arc;
 
 use schlau_sync::{AttachmentWorker, BlobSource, Command, Connect, EngineHandle, Notify, SharedEmbedder, SharedMedia, Status};
 
+use crate::periods::Section;
 use crate::search::SearchResults;
 
 pub const PAGE: usize = 400;
+
+/// Periods keyed by the rows version and the minute they were worked out at.
+type SectionCache = ((u64, i64), Rc<[Section]>);
 
 pub struct Ui {
     pub db_path: PathBuf,
@@ -34,6 +38,8 @@ pub struct Ui {
     pub background: Option<String>,
 
     pub mailboxes: Vec<Mailbox>,
+    /// The names the account sends as, so a conversation's avatars show the other people.
+    pub own_names: Vec<String>,
     pub mailbox_id: String,
     pub rows: Vec<ThreadRow>,
     pub rows_version: u64,
@@ -68,6 +74,10 @@ pub struct Ui {
     pub clock: f64,
     /// An element to bring into view on the next frame, once the view that holds it is built.
     pub pending_scroll: Option<String>,
+    /// A list row to move to the top of the list on the next frame, once revealing it mounted it.
+    pub pending_top: Option<String>,
+    /// The list's periods, for the rows version and minute they were worked out at.
+    sections: RefCell<Option<SectionCache>>,
 }
 
 pub struct OpenThread {
@@ -122,6 +132,7 @@ impl Ui {
             status: Status::Idle,
             background: None,
             mailboxes: Vec::new(),
+            own_names: Vec::new(),
             mailbox_id: String::new(),
             rows: Vec::new(),
             rows_version: 0,
@@ -147,8 +158,11 @@ impl Ui {
             toast: None,
             clock: 0.0,
             pending_scroll: None,
+            pending_top: None,
+            sections: RefCell::new(None),
         };
         ui.mailboxes = ui.reader.mailboxes().unwrap_or_default();
+        ui.own_names = ui.reader.own_names().unwrap_or_default();
         let inbox = ui.mailbox_with_role("inbox").or_else(|| ui.mailboxes.first()).map(|m| m.id.clone());
         if let Some(inbox) = inbox {
             ui.show_mailbox(&inbox);
@@ -191,6 +205,7 @@ impl Ui {
     /// same conversation when it's still listed.
     pub fn reload(&mut self) {
         self.mailboxes = self.reader.mailboxes().unwrap_or_default();
+        self.own_names = self.reader.own_names().unwrap_or_default();
         let keep = self.selected_row().map(|r| r.thread_id.clone());
         let count = self.rows.len().max(PAGE);
         self.rows = self.reader.thread_page(&self.mailbox_id, None, count).unwrap_or_default();
@@ -220,6 +235,39 @@ impl Ui {
         if self.selected + 50 > self.rows.len() {
             self.load_more();
         }
+    }
+
+    /// The loaded rows' periods, worked out again when the rows change or a minute has passed.
+    pub fn sections(&self) -> Rc<[Section]> {
+        let now = crate::format::now_unix();
+        let key = (self.rows_version, now / 60);
+        let mut cache = self.sections.borrow_mut();
+        match cache.as_ref() {
+            Some((at, sections)) if *at == key => sections.clone(),
+            _ => {
+                let rows = self.rows.iter().map(|r| (r.latest_at, r.unread_count > 0));
+                let sections: Rc<[Section]> = crate::periods::sections(rows, now, &jiff::tz::TimeZone::system()).into();
+                *cache = Some((key, sections.clone()));
+                sections
+            }
+        }
+    }
+
+    /// Selects the first conversation of the next (`delta` 1) or previous (-1) period, as `]d` and
+    /// `[d` do. Returns its row key when the selection moved.
+    pub fn jump_period(&mut self, delta: isize) -> Option<String> {
+        let target = crate::periods::jump_target(&self.sections(), self.selected, delta)?;
+        self.select_row(target)
+    }
+
+    /// Selects row `index` and returns its key, loading more rows when it is near the end.
+    pub fn select_row(&mut self, index: usize) -> Option<String> {
+        let key = crate::view::row_key(&self.rows.get(index)?.thread_id);
+        self.selected = index;
+        if self.selected + 50 > self.rows.len() {
+            self.load_more();
+        }
+        Some(key)
     }
 
     pub fn select_thread(&mut self, thread_id: &str) {
