@@ -23,6 +23,17 @@ security add-generic-password -s schlau -a fastmail -w fmu1-…
 Data lives in `~/Library/Application Support/schlau/` (`mail.sqlite`, `demo.sqlite`, `models/`). `--db PATH` uses
 another database.
 
+### macOS app
+
+```sh
+scripts/bundle-macos.sh            # target/release/bundle/schlau.app
+scripts/bundle-macos.sh --install  # and copies it to ~/Applications
+```
+
+An app opened from Finder or the Dock doesn't see your shell's environment, so keep the token in the Keychain (above).
+The icon is `assets/icon/schlau.icns`, made from the artwork in `assets/icon/schlau-fuchs.png` by
+`uv run scripts/app-icon.py`.
+
 ## Keys
 
 | Key | Action |
