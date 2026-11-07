@@ -27,7 +27,7 @@ pub fn view(s: &Ui, cx: &mut Cx<Ui>) -> El {
         .child(top_bar(s, &k))
         .child(main)
         .child(status_bar(s, &k));
-    let overlays = [overlay::palette(s, &k, dark), overlay::search(s, &k, dark), toast(s, &k)];
+    let overlays = [crate::preview::view(s, &k), overlay::palette(s, &k, dark), overlay::search(s, &k, dark), toast(s, &k)];
     rune_kit::root(base, overlays.into_iter().flatten())
 }
 

@@ -30,8 +30,10 @@ another database.
 | `⌘K` | Command palette (every command, every mailbox) |
 | `/` | Search |
 | `j` / `k`, `↓` / `↑` | Next / previous conversation |
-| `↵` or `o` | Open |
-| `esc` or `u` | Back |
+| `↵`, `o`, `l` or `→` | Open |
+| `esc`, `u`, `h` or `←` | Back |
+| `g f` or `g l` | Go to folder (fuzzy, every folder with its unread count) |
+| `space` | Quick look at the message's attachments (`←`/`→` between them, `↵` opens in the default app) |
 | `e` | Done (archive) |
 | `#` | Trash |
 | `!` | Spam |

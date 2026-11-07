@@ -81,7 +81,7 @@ pub fn palette(s: &Ui, k: &Kit, dark: bool) -> Option<El> {
         .single_line()
         .grow(1.0)
         .color(k.c.text_base)
-        .placeholder("Type a command or mailbox", k.c.text_faint)
+        .placeholder(if p.folders { "Go to folder" } else { "Type a command or folder" }, k.c.text_faint)
         .on_edit(|s: &mut Ui| &mut s.palette.as_mut().expect("palette open").query)
         .on_input_change(|s: &mut Ui, _| {
             if let Some(p) = s.palette.as_mut() {
@@ -109,6 +109,8 @@ pub fn palette(s: &Ui, k: &Kit, dark: bool) -> Option<El> {
             let label = rank::highlighted(&title, &positions, k.ty.body, k.c.text_base, theme::accent(dark));
             let keycaps = if keys.is_empty() {
                 el()
+            } else if matches!(entry, Entry::Mailbox(_)) {
+                text(format!("{keys} unread")).font(k.ty.small).color(k.c.text_faint)
             } else {
                 Keybind::new(&keys.split([' ', '+']).map(keycap).collect::<Vec<_>>()).build(k)
             };

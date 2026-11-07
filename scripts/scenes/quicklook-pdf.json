@@ -1,0 +1,1 @@
+{"events": [{"t": 0.3, "type": "key", "name": "/"}, {"t": 0.5, "type": "type", "text": "nachzahlung ", "every": 0.03}, {"t": 2.0, "type": "key", "name": "Enter"}, {"t": 2.8, "type": "type", "text": " "}, {"t": 5.0, "type": "mark", "name": "end"}]}

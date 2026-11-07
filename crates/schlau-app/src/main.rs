@@ -2,6 +2,7 @@ mod account;
 mod commands;
 mod demo;
 mod format;
+mod preview;
 mod rank;
 mod reader;
 mod search;
@@ -88,18 +89,25 @@ fn media_backend() -> MediaBackend {
     }
 }
 
-/// Attachments come from the account, or from the files next to a fixture mailbox. The demo data has none.
+/// Where attachment files come from: the account, or the files next to a fixture mailbox. The demo
+/// data has none.
+fn blob_source(args: &Args, connect: Option<Connect>) -> Option<Arc<dyn BlobSource>> {
+    match (&args.fixtures, connect) {
+        (Some(dir), _) => Some(Arc::new(FixtureBlobs(dir.join("blobs")))),
+        (None, Some(connect)) => Some(Arc::new(JmapBlobs::new(connect))),
+        (None, None) => None,
+    }
+}
+
 fn attachment_worker(args: &Args, path: &Path, connect: Option<Connect>, shared: &SharedMedia) -> Option<AttachmentWorker> {
-    let blobs: Arc<dyn BlobSource> = match (&args.fixtures, connect) {
-        (Some(dir), _) => Arc::new(FixtureBlobs(dir.join("blobs"))),
-        (None, Some(connect)) => Arc::new(JmapBlobs::new(connect)),
-        (None, None) => return None,
-    };
+    let blobs = blob_source(args, connect)?;
     Some(AttachmentWorker { path: path.to_path_buf(), blobs, backend: Some(media_backend()), shared: shared.clone() })
 }
 
 fn setup(s: &mut Ui, waker: Waker) {
     s.search_results.set_waker(waker.clone());
+    s.preview_loads.set_waker(waker.clone());
+    s.images = Some(rune::ImageCache::new(waker.clone()));
     let Some(store) = s.pending_store.take() else { return };
     let notify = Notify::new(move || waker());
     let engine = Engine::new(store, notify.clone()).with_semantic(s.embedder.clone(), data_dir().join("models"));
@@ -148,6 +156,10 @@ fn poll(s: &mut Ui, clock: f64, tx: &mut Tx) -> bool {
             s.request_search();
         }
     }
+    if let Some(loaded) = s.preview_loads.take() {
+        s.preview_loaded(loaded);
+        changed = true;
+    }
     if let Some(results) = s.search_results.take()
         && let Some(search) = s.search.as_mut()
     {
@@ -172,6 +184,9 @@ fn poll(s: &mut Ui, clock: f64, tx: &mut Tx) -> bool {
 fn on_key(s: &mut Ui, ev: &KeyEvent, tx: &mut Tx) -> bool {
     if s.palette.is_some() || s.search.is_some() {
         return false;
+    }
+    if s.preview.is_some() {
+        return preview::on_key(s, ev);
     }
     let before = (s.selected, s.thread.as_ref().map(|t| t.thread_id.clone()));
     let handled = commands::dispatch(s, ev, tx);
@@ -204,11 +219,15 @@ fn main() {
         eprintln!("indexing attachments failed: {e}");
     }
     let worker = attachment_worker(&args, &path, connect.clone(), &media);
+    let blobs = blob_source(&args, connect.clone());
+    let cache = data_dir().join("attachments");
     App::new(spec)
         .init(move || {
             let mut ui = Ui::new(path, store, connect);
             ui.media = media;
             ui.pending_worker = worker;
+            ui.blobs = blobs;
+            ui.attachment_cache = cache;
             ui
         })
         .on_window(|window| {

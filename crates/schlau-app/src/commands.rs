@@ -22,8 +22,10 @@ pub const COMMANDS: &[Command] = &[
     Command { id: "search", title: "Search", keys: &["/"], run: open_search },
     Command { id: "next", title: "Next conversation", keys: &["j"], run: |s, _| next(s, 1) },
     Command { id: "previous", title: "Previous conversation", keys: &["k"], run: |s, _| next(s, -1) },
-    Command { id: "open", title: "Open conversation", keys: &["enter", "o"], run: |s, _| s.open_selected() },
-    Command { id: "back", title: "Back", keys: &["escape", "u"], run: back },
+    Command { id: "open", title: "Open conversation", keys: &["enter", "o", "l"], run: |s, _| s.open_selected() },
+    Command { id: "back", title: "Back", keys: &["escape", "u", "h"], run: back },
+    Command { id: "folders", title: "Go to folder…", keys: &["g f", "g l"], run: open_folders },
+    Command { id: "quick-look", title: "Quick look attachments", keys: &["space"], run: quick_look },
     Command { id: "archive", title: "Mark done (archive)", keys: &["e"], run: archive },
     Command { id: "trash", title: "Move to trash", keys: &["#"], run: trash },
     Command { id: "spam", title: "Mark as spam", keys: &["!"], run: spam },
@@ -91,19 +93,38 @@ fn describe(ev: &KeyEvent) -> Option<String> {
         Key::Escape => "escape".into(),
         Key::Down => return Some("j".into()),
         Key::Up => return Some("k".into()),
+        Key::Left => return Some("h".into()),
+        Key::Right => return Some("l".into()),
         _ => return None,
     };
     Some(name)
 }
 
+/// A folder's name with its parents, `Parent / Child`.
+fn folder_path(s: &Ui, m: &schlau_store::Mailbox) -> String {
+    let parent = m.parent_id.as_ref().and_then(|p| s.mailboxes.iter().find(|b| &b.id == p));
+    match parent {
+        Some(parent) if parent.id != m.id => format!("{} / {}", folder_path(s, parent), m.name),
+        _ => m.name.clone(),
+    }
+}
+
+fn unread_hint(m: &schlau_store::Mailbox) -> String {
+    if m.unread_threads > 0 { m.unread_threads.to_string() } else { String::new() }
+}
+
+/// Palette entries: a title and a hint (the keys of a command, the unread count of a folder).
 pub fn palette_entries(s: &Ui) -> Vec<(Entry, String, String)> {
+    if s.palette.as_ref().is_some_and(|p| p.folders) {
+        return s.mailboxes.iter().map(|m| (Entry::Mailbox(m.id.clone()), folder_path(s, m), unread_hint(m))).collect();
+    }
     let commands = COMMANDS
         .iter()
         .enumerate()
         .filter(|(_, c)| c.id != "palette")
         .map(|(i, c)| (Entry::Command(i), c.title.to_string(), c.keys.first().copied().unwrap_or("").to_string()));
     const ROLES_WITH_COMMANDS: [&str; 6] = ["inbox", "archive", "sent", "drafts", "trash", "junk"];
-    let mailboxes = s.mailboxes.iter().filter(|m| !m.role.as_deref().is_some_and(|r| ROLES_WITH_COMMANDS.contains(&r))).map(|m| (Entry::Mailbox(m.id.clone()), format!("Go to {}", m.name), String::new()));
+    let mailboxes = s.mailboxes.iter().filter(|m| !m.role.as_deref().is_some_and(|r| ROLES_WITH_COMMANDS.contains(&r))).map(|m| (Entry::Mailbox(m.id.clone()), format!("Go to {}", folder_path(s, m)), unread_hint(m)));
     commands.chain(mailboxes).collect()
 }
 
@@ -118,7 +139,30 @@ pub fn run_entry(s: &mut Ui, entry: &Entry, tx: &mut Tx) {
 fn open_palette(s: &mut Ui, _: &mut Tx) {
     let mut query = TextEdit::new("");
     query.focused = true;
-    s.palette = Some(Palette { query, picked: 0 });
+    s.palette = Some(Palette { query, picked: 0, folders: false });
+}
+
+fn open_folders(s: &mut Ui, _: &mut Tx) {
+    let mut query = TextEdit::new("");
+    query.focused = true;
+    s.palette = Some(Palette { query, picked: 0, folders: true });
+}
+
+/// Quick look at the focused message's attachments, or the nearest earlier message's that has some.
+fn quick_look(s: &mut Ui, _: &mut Tx) {
+    let Some(t) = s.thread.as_ref() else {
+        s.toast("Open a conversation to look at its attachments");
+        return;
+    };
+    let found = t.messages[..=t.focused.min(t.messages.len().saturating_sub(1))]
+        .iter()
+        .rev()
+        .chain(t.messages.iter().skip(t.focused + 1))
+        .filter_map(|m| t.bodies.get(&m.id))
+        .map(|r| r.attachments.clone())
+        .find(|a| !a.is_empty())
+        .unwrap_or_default();
+    s.quick_look(found, 0);
 }
 
 fn open_search(s: &mut Ui, _: &mut Tx) {

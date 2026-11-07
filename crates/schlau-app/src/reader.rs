@@ -111,7 +111,8 @@ pub fn human_size(bytes: i64) -> String {
 }
 
 fn attachments(list: &[Attachment], k: &Kit) -> El {
-    row().w_full().gap(8.0).pt(4.0).flex_wrap().children(list.iter().map(|a| {
+    row().w_full().gap(8.0).pt(4.0).flex_wrap().children(list.iter().enumerate().map(|(index, a)| {
+        let all = list.to_vec();
         let name = a.name.clone().unwrap_or_else(|| "attachment".into());
         row()
             .key(format!("a:{}", a.blob_id))
@@ -133,6 +134,8 @@ fn attachments(list: &[Attachment], k: &Kit) -> El {
             )
             .child(text(name).font(k.ty.small).color(k.c.text_base).truncate().max_w(260.0))
             .child(text(human_size(a.size)).font(k.ty.small).color(k.c.text_faint))
+            .hover(k.c.hover)
+            .on_press(move |s: &mut Ui| s.quick_look(all.clone(), index))
     }))
 }
 

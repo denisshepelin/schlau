@@ -4571,6 +4571,7 @@ dependencies = [
  "rune",
  "rune-kit",
  "schlau-embed",
+ "schlau-extract",
  "schlau-html",
  "schlau-jmap",
  "schlau-search",

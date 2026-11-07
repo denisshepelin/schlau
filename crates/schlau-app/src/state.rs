@@ -3,7 +3,9 @@ use std::path::PathBuf;
 
 use rune::{Latest, TextEdit};
 use schlau_store::{Action, Mailbox, MessageView, PageCursor, Reader, Store, ThreadRow};
-use schlau_sync::{AttachmentWorker, Command, Connect, EngineHandle, Notify, SharedEmbedder, SharedMedia, Status};
+use std::sync::Arc;
+
+use schlau_sync::{AttachmentWorker, BlobSource, Command, Connect, EngineHandle, Notify, SharedEmbedder, SharedMedia, Status};
 
 use crate::search::SearchResults;
 
@@ -41,6 +43,14 @@ pub struct Ui {
     pub palette: Option<Palette>,
     pub search: Option<Search>,
     pub search_results: Latest<SearchResults>,
+    /// Quick look over the conversation, when open.
+    pub preview: Option<crate::preview::Preview>,
+    pub preview_loads: Latest<crate::preview::Loaded>,
+    /// Decodes attachment pictures off the main thread; made once the window has a waker.
+    pub images: Option<rune::ImageCache>,
+    /// Where quick look fetches files from: the account or the fixture folder.
+    pub blobs: Option<Arc<dyn BlobSource>>,
+    pub attachment_cache: PathBuf,
     pub pending_chord: Option<char>,
     pub undo: Vec<Vec<Action>>,
     pub toast: Option<Toast>,
@@ -60,6 +70,8 @@ pub struct OpenThread {
 pub struct Palette {
     pub query: TextEdit,
     pub picked: usize,
+    /// Lists every folder instead of commands: the folder switcher.
+    pub folders: bool,
 }
 
 pub struct Search {
@@ -104,6 +116,11 @@ impl Ui {
             palette: None,
             search: None,
             search_results: Latest::default().debounce(std::time::Duration::from_millis(30)),
+            preview: None,
+            preview_loads: Latest::default(),
+            images: None,
+            blobs: None,
+            attachment_cache: PathBuf::new(),
             pending_chord: None,
             undo: Vec::new(),
             toast: None,
