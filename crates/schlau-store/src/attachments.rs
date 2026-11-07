@@ -82,25 +82,26 @@ impl WriteTx<'_> {
         };
         self.tx
             .prepare_cached(
-                "UPDATE attachment_index SET state = ?3, model = ?4, text = ?5, error = ?6
+                "UPDATE attachment_index SET state = ?3, text = ?4, error = ?5
                  WHERE message = ?1 AND part = ?2",
             )?
-            .execute(params![message, part, state, outcome.model, text, outcome.skipped])?;
-        self.tx.prepare_cached("DELETE FROM media_vectors WHERE message = ?1 AND part = ?2")?.execute(params![message, part])?;
-        let mut insert = self.tx.prepare_cached("INSERT INTO media_vectors(message, part, chunk, vec) VALUES (?1, ?2, ?3, ?4)")?;
-        outcome.vectors.iter().take(CHUNKS as usize).enumerate().try_for_each(|(chunk, v)| {
-            insert.execute(params![message, part, chunk as i64, v]).map(|_| ())
-        })?;
+            .execute(params![message, part, state, text, outcome.skipped])?;
+        if let Some(model) = &outcome.model {
+            self.tx
+                .prepare_cached("INSERT OR IGNORE INTO attachment_embedded(model, message, part) VALUES (?1, ?2, ?3)")?
+                .execute(params![model, message, part])?;
+            self.tx
+                .prepare_cached("DELETE FROM media_vectors WHERE model = ?1 AND message = ?2 AND part = ?3")?
+                .execute(params![model, message, part])?;
+            let mut insert =
+                self.tx.prepare_cached("INSERT INTO media_vectors(model, message, part, chunk, vec) VALUES (?1, ?2, ?3, ?4, ?5)")?;
+            outcome.vectors.iter().take(CHUNKS as usize).enumerate().try_for_each(|(chunk, v)| {
+                insert.execute(params![model, message, part, chunk as i64, v]).map(|_| ())
+            })?;
+        }
         if outcome.text.is_some() {
             self.reindex_words(message, body_text)?;
         }
-        Ok(())
-    }
-
-    /// Drops every media vector, for a change of model.
-    pub fn clear_media_vectors(&self) -> Result<()> {
-        self.tx.execute("DELETE FROM media_vectors", [])?;
-        self.tx.execute("UPDATE attachment_index SET model = NULL", [])?;
         Ok(())
     }
 
@@ -135,7 +136,8 @@ impl Reader {
         let mut stmt = self.conn.prepare_cached(
             "SELECT a.message, m.id, a.part, a.blob_id, a.name, a.mime, a.size, a.state
              FROM attachment_index a JOIN messages m ON m.rowid = a.message
-             WHERE a.state = 0 OR (?1 IS NOT NULL AND a.state = 1 AND (a.model IS NULL OR a.model != ?1))
+             WHERE a.state = 0 OR (?1 IS NOT NULL AND a.state = 1 AND NOT EXISTS (
+                 SELECT 1 FROM attachment_embedded e WHERE e.model = ?1 AND e.message = a.message AND e.part = a.part))
              ORDER BY a.state, m.received_at DESC LIMIT ?2",
         )?;
         let rows = stmt.query_map(params![model, limit as i64], |r| {
@@ -160,15 +162,19 @@ impl Reader {
     /// How many attachments are done for `model` (or extracted, without one), of all indexable ones.
     pub fn attachment_progress(&self, model: Option<&str>) -> Result<(i64, i64)> {
         Ok(self.conn.prepare_cached(
-            "SELECT count(*) FILTER (WHERE state = 2 OR (state = 1 AND (?1 IS NULL OR model = ?1))), count(*)
-             FROM attachment_index",
+            "SELECT count(*) FILTER (WHERE state = 2 OR (state = 1 AND (?1 IS NULL OR EXISTS (
+                 SELECT 1 FROM attachment_embedded e WHERE e.model = ?1 AND e.message = a.message AND e.part = a.part)))),
+                    count(*)
+             FROM attachment_index a",
         )?.query_row([model], |r| Ok((r.get(0)?, r.get(1)?)))?)
     }
 
-    /// Every media vector, with its packed id (see [`media_vector_id`]).
-    pub fn media_vectors(&self, mut each: impl FnMut(i64, &[u8])) -> Result<()> {
-        let mut stmt = self.conn.prepare_cached("SELECT message, part, chunk, vec FROM media_vectors ORDER BY message, part, chunk")?;
-        let mut rows = stmt.query([])?;
+    /// Every media vector `model` made, with its packed id (see [`media_vector_id`]).
+    pub fn media_vectors(&self, model: &str, mut each: impl FnMut(i64, &[u8])) -> Result<()> {
+        let mut stmt = self
+            .conn
+            .prepare_cached("SELECT message, part, chunk, vec FROM media_vectors WHERE model = ?1 ORDER BY message, part, chunk")?;
+        let mut rows = stmt.query([model])?;
         while let Some(row) = rows.next()? {
             let blob = row.get_ref(3)?.as_blob().map_err(rusqlite::Error::from)?;
             each(media_vector_id(row.get(0)?, row.get(1)?, row.get(2)?), blob);
@@ -176,8 +182,8 @@ impl Reader {
         Ok(())
     }
 
-    pub fn media_vector_count(&self) -> Result<i64> {
-        Ok(self.conn.prepare_cached("SELECT count(*) FROM media_vectors")?.query_row([], |r| r.get(0))?)
+    pub fn media_vector_count(&self, model: &str) -> Result<i64> {
+        Ok(self.conn.prepare_cached("SELECT count(*) FROM media_vectors WHERE model = ?1")?.query_row([model], |r| r.get(0))?)
     }
 
     /// An attachment's file name.

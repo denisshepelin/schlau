@@ -220,15 +220,15 @@ pub struct EmbedInput {
 }
 
 impl Reader {
-    /// Messages with a fetched body and no vectors yet, newest first.
-    pub fn messages_without_vectors(&self, limit: usize) -> Result<Vec<EmbedInput>> {
+    /// Messages with a fetched body and no vectors from `model` yet, newest first.
+    pub fn messages_without_vectors(&self, model: &str, limit: usize) -> Result<Vec<EmbedInput>> {
         let mut stmt = self.conn.prepare_cached(
             "SELECT m.id, m.subject, m.from_name, m.from_email, b.text, b.html
              FROM messages m JOIN bodies b ON b.message = m.rowid
-             WHERE NOT EXISTS (SELECT 1 FROM vectors v WHERE v.message = m.rowid)
-             ORDER BY m.received_at DESC LIMIT ?1",
+             WHERE NOT EXISTS (SELECT 1 FROM vectors v WHERE v.model = ?1 AND v.message = m.rowid)
+             ORDER BY m.received_at DESC LIMIT ?2",
         )?;
-        let rows = stmt.query_map([limit as i64], |r| {
+        let rows = stmt.query_map(params![model, limit as i64], |r| {
             let (name, email): (String, String) = (r.get(2)?, r.get(3)?);
             Ok(EmbedInput {
                 id: r.get(0)?,
@@ -240,10 +240,10 @@ impl Reader {
         Ok(rows.collect::<rusqlite::Result<_>>()?)
     }
 
-    /// Every stored vector with its message rowid, in rowid order.
-    pub fn vectors(&self, mut each: impl FnMut(i64, &[u8])) -> Result<()> {
-        let mut stmt = self.conn.prepare_cached("SELECT message, vec FROM vectors ORDER BY message, chunk")?;
-        let mut rows = stmt.query([])?;
+    /// Every vector `model` made, with its message rowid, in rowid order.
+    pub fn vectors(&self, model: &str, mut each: impl FnMut(i64, &[u8])) -> Result<()> {
+        let mut stmt = self.conn.prepare_cached("SELECT message, vec FROM vectors WHERE model = ?1 ORDER BY message, chunk")?;
+        let mut rows = stmt.query([model])?;
         while let Some(row) = rows.next()? {
             let blob = row.get_ref(1)?.as_blob().map_err(rusqlite::Error::from)?;
             each(row.get(0)?, blob);
@@ -251,7 +251,10 @@ impl Reader {
         Ok(())
     }
 
-    pub fn vector_count(&self) -> Result<i64> {
-        Ok(self.conn.prepare_cached("SELECT count(*) FROM vectors")?.query_row([], |r| r.get(0))?)
+    /// Messages `model` has vectors for, and messages with a body to embed.
+    pub fn vector_progress(&self, model: &str) -> Result<(i64, i64)> {
+        Ok(self.conn.prepare_cached(
+            "SELECT (SELECT count(DISTINCT message) FROM vectors WHERE model = ?1), (SELECT count(*) FROM bodies)",
+        )?.query_row([model], |r| Ok((r.get(0)?, r.get(1)?)))?)
     }
 }

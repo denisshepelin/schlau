@@ -7,7 +7,7 @@ use std::sync::{Arc, Mutex};
 use std::time::{Duration, Instant};
 
 use schlau_embed::{Embedder, MediaEmbedder, Precision, ScoreStats, VectorIndex};
-use schlau_search::{MatchReason, MeaningScale, Vocabulary, parse_in_zone};
+use schlau_search::{ExpandOptions, MatchReason, MeaningScale, Vocabulary, parse_in_zone};
 use schlau_store::{MeaningChannel, MeaningInput, Reader, ThreadRow};
 
 #[derive(Debug, Clone, PartialEq)]
@@ -28,6 +28,8 @@ pub struct SearchRequest {
     pub version: u64,
     pub embedder: Option<Arc<dyn Embedder>>,
     pub media: Option<Arc<dyn MediaEmbedder>>,
+    /// How words match (typo tolerance, the last word).
+    pub words: ExpandOptions,
 }
 
 struct Cache {
@@ -36,8 +38,9 @@ struct Cache {
     vocabulary: Arc<Vocabulary>,
     vectors: Option<Arc<VectorIndex>>,
     media_vectors: Option<Arc<VectorIndex>>,
-    /// Built while the multimodal model was loaded: without it there was no way to read media vectors.
-    with_media: bool,
+    /// The models the vectors were read for: another model means other vectors.
+    text_model: Option<String>,
+    media_model: Option<String>,
     version: u64,
     built: Instant,
 }
@@ -60,15 +63,15 @@ fn index_of(rows: Vec<(i64, Vec<u8>)>, dim: usize) -> Option<VectorIndex> {
     VectorIndex::from_f16_blobs(dim, Precision::F16, rows.iter().map(|(id, b)| (*id, b.as_slice()))).ok()
 }
 
-fn vector_index(reader: &Reader, dim: usize) -> Option<VectorIndex> {
+fn vector_index(reader: &Reader, model: &str, dim: usize) -> Option<VectorIndex> {
     let mut rows: Vec<(i64, Vec<u8>)> = Vec::new();
-    reader.vectors(|id, blob| rows.push((id, blob.to_vec()))).ok()?;
+    reader.vectors(model, |id, blob| rows.push((id, blob.to_vec()))).ok()?;
     index_of(rows, dim)
 }
 
-fn media_vector_index(reader: &Reader, dim: usize) -> Option<VectorIndex> {
+fn media_vector_index(reader: &Reader, model: &str, dim: usize) -> Option<VectorIndex> {
     let mut rows: Vec<(i64, Vec<u8>)> = Vec::new();
-    reader.media_vectors(|id, blob| rows.push((id, blob.to_vec()))).ok()?;
+    reader.media_vectors(model, |id, blob| rows.push((id, blob.to_vec()))).ok()?;
     index_of(rows, dim)
 }
 
@@ -79,20 +82,22 @@ fn with_cache<T>(request: &SearchRequest, f: impl FnOnce(&Cache) -> T) -> Option
         c.path != request.path
             || (c.version != request.version && c.built.elapsed() > REBUILD_AFTER)
             || (c.vectors.is_none() && request.embedder.is_some() && c.version != request.version)
-            || (request.media.is_some() && !c.with_media)
+            || c.text_model.as_deref() != request.embedder.as_ref().map(|e| e.id())
+            || c.media_model.as_deref() != request.media.as_ref().map(|e| e.id())
             || (c.media_vectors.is_none() && request.media.is_some() && c.version != request.version)
     });
     if stale {
         let reader = schlau_store::open_reader(&request.path).ok()?;
-        let vectors = request.embedder.as_ref().and_then(|e| vector_index(&reader, e.dim())).map(Arc::new);
-        let media_vectors = request.media.as_ref().and_then(|e| media_vector_index(&reader, e.dim())).map(Arc::new);
+        let vectors = request.embedder.as_ref().and_then(|e| vector_index(&reader, e.id(), e.dim())).map(Arc::new);
+        let media_vectors = request.media.as_ref().and_then(|e| media_vector_index(&reader, e.id(), e.dim())).map(Arc::new);
         *slot = Some(Cache {
             path: request.path.clone(),
             vocabulary: Arc::new(vocabulary(&reader)),
             reader,
             vectors,
             media_vectors,
-            with_media: request.media.is_some(),
+            text_model: request.embedder.as_ref().map(|e| e.id().to_string()),
+            media_model: request.media.as_ref().map(|e| e.id().to_string()),
             version: request.version,
             built: Instant::now(),
         });
@@ -137,7 +142,7 @@ pub fn run(request: SearchRequest) -> SearchResults {
             .collect();
         let semantic = !channels.is_empty();
         let input = semantic.then_some(MeaningInput { channels });
-        (cache.reader.search(&query, &cache.vocabulary, input, now, LIMIT).unwrap_or_default(), semantic)
+        (cache.reader.search_with(&query, &cache.vocabulary, input, now, LIMIT, &request.words).unwrap_or_default(), semantic)
     });
     let (hits, semantic) = found.unwrap_or_default();
     SearchResults {
@@ -162,7 +167,7 @@ fn scale(stats: ScoreStats) -> MeaningScale {
 
 /// Warms the cache in the background so the first search after launch is fast.
 pub fn warm(path: &Path, version: u64, embedder: Option<Arc<dyn Embedder>>) {
-    let request = SearchRequest { path: path.to_path_buf(), query: String::new(), version, embedder, media: None };
+    let request = SearchRequest { path: path.to_path_buf(), query: String::new(), version, embedder, media: None, words: ExpandOptions::default() };
     let _ = std::thread::Builder::new().name("schlau-search-warm".into()).spawn(move || with_cache(&request, |_| ()));
 }
 
@@ -199,14 +204,14 @@ mod tests {
             "\"design review\"",
             "contract renewal annual billing",
         ];
-        let mut warm = SearchRequest { path: path.clone(), query: "x".into(), version: 1, embedder: None, media: None };
+        let mut warm = SearchRequest { path: path.clone(), query: "x".into(), version: 1, embedder: None, media: None, words: ExpandOptions::default() };
         run(SearchRequest { query: "warm".into(), ..warm });
-        warm = SearchRequest { path, query: String::new(), version: 1, embedder: None, media: None };
+        warm = SearchRequest { path, query: String::new(), version: 1, embedder: None, media: None, words: ExpandOptions::default() };
         let mut times: Vec<f64> = queries
             .iter()
             .flat_map(|q| (1..=q.len()).filter(|&i| q.is_char_boundary(i)).map(move |i| q[..i].to_string()))
             .map(|q| {
-                let r = run(SearchRequest { query: q.clone(), path: warm.path.clone(), version: 1, embedder: None, media: None });
+                let r = run(SearchRequest { query: q.clone(), path: warm.path.clone(), version: 1, embedder: None, media: None, words: ExpandOptions::default() });
                 if r.elapsed_ms > 100.0 {
                     eprintln!("slow {q:?}: {:.0} ms, {} rows", r.elapsed_ms, r.rows.len());
                 }
@@ -236,7 +241,7 @@ mod explain {
             .map(|m| Arc::new(m) as Arc<dyn MediaEmbedder>);
         let now = crate::format::now_unix();
         let parsed = parse_in_zone(&query, now, utc_offset());
-        let request = SearchRequest { path, query: query.clone(), version: 1, embedder: None, media };
+        let request = SearchRequest { path, query: query.clone(), version: 1, embedder: None, media, words: ExpandOptions::default() };
         with_cache(&request, |cache| {
             let media = match (&request.media, &cache.media_vectors) {
                 (Some(e), Some(v)) => top_hits(v, e.embed_query(&query).ok()),

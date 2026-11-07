@@ -3,7 +3,7 @@
 
 use std::sync::Arc;
 
-use crate::{ModelFile, ModelSpec, Result};
+use crate::{Embedder, ModelFile, ModelSpec, Result};
 
 /// One thing to embed as a document.
 #[derive(Debug, Clone, PartialEq)]
@@ -29,6 +29,29 @@ pub trait MediaEmbedder: Send + Sync {
 
     /// Embeds documents. Output order matches input order.
     fn embed(&self, inputs: &[MediaInput]) -> Result<Vec<Vec<f32>>>;
+}
+
+/// A multimodal model used for message text: the same space as attachments, a much larger model than
+/// Model2Vec.
+pub struct TextOf(pub Arc<dyn MediaEmbedder>);
+
+impl Embedder for TextOf {
+    fn id(&self) -> &str {
+        self.0.id()
+    }
+
+    fn dim(&self) -> usize {
+        self.0.dim()
+    }
+
+    fn embed_documents(&self, texts: &[&str]) -> Result<Vec<Vec<f32>>> {
+        let inputs: Vec<MediaInput> = texts.iter().map(|t| MediaInput::Text { title: None, text: t.to_string() }).collect();
+        self.0.embed(&inputs)
+    }
+
+    fn embed_query(&self, text: &str) -> Result<Vec<f32>> {
+        self.0.embed_query(text)
+    }
 }
 
 /// The id of EmbeddingGemma 2 vectors at full size.

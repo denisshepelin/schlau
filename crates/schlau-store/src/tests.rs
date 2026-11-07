@@ -314,12 +314,16 @@ fn attachments_wait_for_extraction_then_for_vectors_and_their_text_is_searchable
     assert!(reader.pending_attachments(Some("gemma"), 10).unwrap().is_empty());
     assert_eq!(reader.fts_match("nachzahlung", 10).unwrap().len(), 1, "a vectors-only pass keeps the text");
     let mut ids = Vec::new();
-    reader.media_vectors(|id, _| ids.push(id)).unwrap();
+    reader.media_vectors("gemma", |id, _| ids.push(id)).unwrap();
+    let mut other = Vec::new();
+    reader.media_vectors("another", |id, _| other.push(id)).unwrap();
+    assert!(other.is_empty(), "vectors belong to their model");
+    assert_eq!(reader.pending_attachments(Some("another"), 10).unwrap().len(), 1, "a second model still has work");
     assert_eq!(ids.iter().map(|&id| media_vector_location(id)).collect::<Vec<_>>(), [(pdf.message, 0), (pdf.message, 0)]);
     assert_eq!(reader.attachment_name(pdf.message, 0).unwrap().as_deref(), Some("Nebenkosten.pdf"));
 
     store.write(|tx| tx.delete_message("m1")).unwrap();
-    assert_eq!(store.reader().unwrap().media_vector_count().unwrap(), 0);
+    assert_eq!(store.reader().unwrap().media_vector_count("gemma").unwrap(), 0);
 }
 
 #[test]
@@ -349,4 +353,51 @@ fn a_photo_that_means_the_query_finds_its_conversation_and_says_which_file() {
     let hits = reader.search(&parse("dog", 1_000), &vocab, Some(meaning), 1_000, 10).unwrap();
     assert_eq!(hits[0].row.thread_id, "t1");
     assert_eq!(hits[0].attachment.as_deref(), Some("bruno-beach.jpg"));
+}
+
+#[test]
+fn message_vectors_are_kept_per_model() {
+    let (_dir, mut store) = store();
+    store
+        .write(|tx| {
+            tx.upsert_message(&message("m1", "t1", 100, ("Jane", "jane@example.com"), "Hello", &["inbox"]))?;
+            tx.set_body("m1", &Body { text: Some("hi".into()), ..Default::default() }, &BodyIndex { text: "hi".into() })?;
+            tx.put_vectors("potion", "m1", &[vec![1u8, 2]])
+        })
+        .unwrap();
+    let reader = store.reader().unwrap();
+    assert!(reader.messages_without_vectors("potion", 10).unwrap().is_empty());
+    assert_eq!(reader.messages_without_vectors("gemma", 10).unwrap().len(), 1, "another model starts its own index");
+    store.write(|tx| tx.put_vectors("gemma", "m1", &[vec![3u8, 4], vec![5, 6]])).unwrap();
+    let reader = store.reader().unwrap();
+    let count = |model: &str| {
+        let mut n = 0;
+        reader.vectors(model, |_, _| n += 1).unwrap();
+        n
+    };
+    assert_eq!((count("potion"), count("gemma")), (1, 2), "switching back finds the first model's vectors");
+    assert_eq!(reader.vector_progress("gemma").unwrap(), (1, 1));
+    store.write(|tx| tx.forget_model("potion")).unwrap();
+    assert_eq!(store.reader().unwrap().vector_progress("potion").unwrap().0, 0);
+}
+
+/// Opens (and so migrates) the database in `SCHLAU_MIGRATE_DB`: run it on a copy of a real replica before a
+/// schema change ships. `SCHLAU_MIGRATE_DB=… cargo test -p schlau-store migrates_a_copy -- --ignored --nocapture`.
+#[test]
+#[ignore = "needs SCHLAU_MIGRATE_DB pointing at a copy of a database"]
+fn migrates_a_copy() {
+    let path = std::path::PathBuf::from(std::env::var("SCHLAU_MIGRATE_DB").unwrap());
+    let started = Instant::now();
+    let store = Store::open(&path).unwrap();
+    let reader = store.reader().unwrap();
+    let version: i64 = reader.conn.query_row("PRAGMA user_version", [], |r| r.get(0)).unwrap();
+    let count = |sql: &str| -> i64 { reader.conn.query_row(sql, [], |r| r.get(0)).unwrap() };
+    eprintln!(
+        "migrated to v{version} in {:.0} ms: {} messages, {} media vectors, {} attachments embedded, {} pending",
+        started.elapsed().as_secs_f64() * 1000.0,
+        reader.message_count().unwrap(),
+        count("SELECT count(*) FROM media_vectors"),
+        count("SELECT count(*) FROM attachment_embedded"),
+        reader.pending_attachments(Some("embeddinggemma-2/768"), 100_000).unwrap().len(),
+    );
 }

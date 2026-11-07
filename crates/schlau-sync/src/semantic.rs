@@ -9,8 +9,9 @@ use schlau_store::Store;
 
 use crate::index::body_index_text;
 
-const MODEL_META: &str = "embed.model";
-const BATCH: usize = 256;
+/// Messages per batch: Model2Vec embeds thousands a second, a transformer a few dozen.
+pub const FAST_BATCH: usize = 256;
+pub const SLOW_BATCH: usize = 16;
 
 /// The loaded model, once there is one.
 #[derive(Clone, Default)]
@@ -21,9 +22,15 @@ impl SharedEmbedder {
         self.0.read().ok().and_then(|e| e.clone())
     }
 
-    fn set(&self, embedder: Arc<dyn Embedder>) {
+    pub(crate) fn set(&self, embedder: Arc<dyn Embedder>) {
         if let Ok(mut slot) = self.0.write() {
             *slot = Some(embedder);
+        }
+    }
+
+    pub(crate) fn clear(&self) {
+        if let Ok(mut slot) = self.0.write() {
+            *slot = None;
         }
     }
 }
@@ -58,16 +65,11 @@ pub fn download(cache: &Path, shared: &SharedEmbedder, mut progress: impl FnMut(
     Ok(())
 }
 
-/// Embeds up to one batch of messages that have bodies but no vectors. Returns how many it embedded.
-/// A different model than the stored vectors were made with clears them first.
-pub fn embed_batch(store: &mut Store, embedder: &dyn Embedder) -> schlau_store::Result<usize> {
-    if store.reader()?.meta(MODEL_META)?.as_deref() != Some(embedder.id()) {
-        store.write(|tx| {
-            tx.clear_vectors()?;
-            tx.set_meta(MODEL_META, embedder.id())
-        })?;
-    }
-    let inputs = store.reader()?.messages_without_vectors(BATCH)?;
+/// Embeds up to one batch of messages that have bodies but no vectors from this model. Returns how many it
+/// embedded. Vectors are kept per model, so another model's stay for when it is chosen again.
+pub fn embed_batch(store: &mut Store, embedder: &dyn Embedder, batch: usize) -> schlau_store::Result<usize> {
+    let model = embedder.id().to_string();
+    let inputs = store.reader()?.messages_without_vectors(&model, batch)?;
     if inputs.is_empty() {
         return Ok(0);
     }
@@ -82,7 +84,7 @@ pub fn embed_batch(store: &mut Store, embedder: &dyn Embedder) -> schlau_store::
     store.write(|tx| {
         passages.iter().try_for_each(|(id, p)| {
             let blobs: Vec<Vec<u8>> = vectors.by_ref().take(p.len().max(1)).map(|v| vector::pack_f16(&v)).collect();
-            tx.put_vectors(id, &blobs).map(|_| ())
+            tx.put_vectors(&model, id, &blobs).map(|_| ())
         })
     })?;
     Ok(inputs.len())

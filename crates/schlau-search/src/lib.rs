@@ -22,7 +22,7 @@ mod query;
 mod vocab;
 
 pub use expand::{
-    Alternative, ExpandOptions, ExpandedClause, ExpandedQuery, alternative_weight, expand,
+    Alternative, ExpandOptions, ExpandedClause, ExpandedQuery, LastWord, alternative_weight, expand,
     expand_with,
 };
 pub use fts5::{Fts5Match, Join, clause_to_fts5, quote_term, to_fts5_match};
@@ -34,4 +34,4 @@ pub use fuzzy::{FuzzyMatch, fuzzy_rank};
 pub use normalize::{is_token_char, normalize, terms, tokenize};
 pub use parse::{Token, TokenKind, parse, parse_in_zone, parse_with_tokens, tokens};
 pub use query::{Clause, Field, Filter, Query};
-pub use vocab::{Correction, MatchKind, Vocabulary, typo_budget};
+pub use vocab::{Correction, MatchKind, Typos, Vocabulary, typo_budget};

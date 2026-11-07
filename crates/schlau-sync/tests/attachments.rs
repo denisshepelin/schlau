@@ -70,11 +70,11 @@ fn photos_and_scans_are_found_through_a_running_server() {
 }
 
 fn found_by_what_they_show(backend: MediaBackend) {
-    let (_dir, store, shared) = indexed(Some(backend));
-    let model = shared.get().expect("the query model loads");
+    let (_dir, store, shared) = indexed(Some(backend.clone()));
+    let model = shared.get(&backend).expect("the query model loads");
     let reader = store.reader().unwrap();
     let mut rows: Vec<(i64, Vec<u8>)> = Vec::new();
-    reader.media_vectors(|id, blob| rows.push((id, blob.to_vec()))).unwrap();
+    reader.media_vectors(model.id(), |id, blob| rows.push((id, blob.to_vec()))).unwrap();
     assert!(rows.len() >= 8, "{} media vectors", rows.len());
     let index = schlau_embed::VectorIndex::from_f16_blobs(
         model.dim(),

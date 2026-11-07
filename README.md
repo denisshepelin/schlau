@@ -29,11 +29,17 @@ another database.
 |---|---|
 | `⌘K` | Command palette (every command, every mailbox) |
 | `/` | Search |
-| `j` / `k`, `↓` / `↑` | Next / previous conversation |
+| `j` / `k`, `↓` / `↑` | In the list: next / previous conversation. In an open one: scroll down / up |
+| `⇧J` / `⇧K` | Next / previous conversation, from anywhere |
+| `n` / `p` | Next / previous message in the open conversation |
+| `⌃D` / `⌃U` | Half a page down / up (ten rows in the list) |
+| `⌃F` / `⌃B`, `PgDn` / `PgUp` | A page down / up (twenty rows in the list) |
+| `g g` / `⇧G`, `Home` / `End` | Top / bottom of the conversation, or the newest / oldest loaded one in the list |
 | `↵`, `o`, `l` or `→` | Open |
 | `esc`, `u`, `h` or `←` | Back |
 | `g f` or `g l` | Go to folder (fuzzy, every folder with its unread count) |
-| `space` | Quick look at the message's attachments (`←`/`→` between them, `↵` opens in the default app) |
+| `⌘,` | Settings |
+| `space` | Quick look at the message's attachments (`←`/`→` between them, `↵` opens in the default app, `space` closes) |
 | `e` | Done (archive) |
 | `#` | Trash |
 | `!` | Spam |
@@ -52,10 +58,50 @@ while you type. Operators: `from:` `to:` `cc:` `subject:` `body:` `filename:`, `
 `is:unread|read|starred|draft|answered`, `has:attachment`, `after:` / `before:` / `newer_than:7d` /
 `older_than:1y`, `larger:5M` / `smaller:100k`, `"exact phrases"`, `-negation`, `a OR b`, `{a b}`.
 
-Meaning search (run "Enable meaning search" from the palette, a one-time 530 MB download) adds local embeddings
-(Model2Vec, potion-multilingual-128M, 101 languages): "where we talked about the offsite budget" finds the thread
+Meaning search (the "Meaning search in messages" setting) adds local embeddings, Model2Vec
+(potion-multilingual-128M, 101 languages) or EmbeddingGemma 2: "where we talked about the offsite budget" finds the thread
 even without those words. Word and meaning hits are fused the way DigUp does it: a message's meaning score is how far
 it stands out from the query's distribution, and exact words still win lookups like invoice numbers.
+
+## Settings
+
+`⌘,` (or "Settings" in the `⌘K` palette) opens the settings pane: `j`/`k` move between settings, `h`/`l` change
+the choice (or click it), `↵` edits the server fields and saves them, `esc` closes. Changes apply at once and are kept
+in `settings.json` next to the database.
+
+![settings](docs/screenshots/settings-dark.png)
+
+| Section | Setting | Choices |
+|---|---|---|
+| Word search | Typo tolerance | Off · Fewer (one typo, words of 6+ letters) · Normal (one typo from 4 letters, two from 8) |
+| | Last word typed | Prefix while typing · Whole word |
+| Meaning search | In messages | Off · Model2Vec (530 MB) · EmbeddingGemma 2 (1.5 GB) · Server |
+| | In attachments | Off (their words stay searchable) · EmbeddingGemma 2 · Server |
+| | Embeddings server, server model | Any OpenAI-compatible `/v1/embeddings` endpoint, such as llama-server |
+| Quick look | Open with | schlau · macOS Quick Look |
+
+Choosing a model downloads it if needed and indexes in the background. Vectors are kept per model, so switching
+back is instant. Without a settings file, search uses whatever models are already downloaded. Choosing Server before
+a server is set asks for its address and applies once it is saved. `SCHLAU_EMBED_URL` sets a server for one run
+without saving, and points attachment search at it.
+
+```json
+{
+  "search": { "typos": "normal", "last_word": "prefix", "text_meaning": "model2vec", "attachment_meaning": "embedding-gemma" },
+  "preview": "schlau"
+}
+```
+
+## Quick look
+
+`space` previews the open message's attachments in one of two viewers (the "Quick look with" setting):
+
+- **schlau's viewer** (default): photos and PDF pages drawn in the window by the same pure-Rust code that indexes
+  them, documents as text. Nothing else ever parses the file.
+- **macOS Quick Look**: the system panel, for everything macOS can preview (HEIC, Office, iWork, video, audio).
+  The panel doesn't take the keyboard, so `space`/`esc` close it and `←`/`→` step through the files as in Finder.
+
+Either way the file is fetched once into `attachments/` next to the database, and `↵` opens it in the default app.
 
 ## Image and attachment search
 
@@ -67,7 +113,7 @@ scanned agenda; the search panel shows which file matched.
 The model is EmbeddingGemma 2 (Apache 2.0): text, images and audio in one 768-dim space. Two ways to run it:
 
 - **Built in** (default): a pure-Rust implementation on candle (`crates/schlau-gemma`), Metal on Apple Silicon.
-  Run "Enable image and attachment search" from the palette, a one-time 1.5 GB download. About 290 ms per image
+  Choose it in the "Meaning search in attachments" setting, a one-time 1.5 GB download. About 290 ms per image
   and 17 ms per query on an M4 Pro. The query side keeps only the text tower loaded; the vision tower loads while
   there are attachments to index and unloads a minute after.
 - **A server you already run**: anything that speaks OpenAI `/v1/embeddings`. With llama.cpp:
@@ -77,6 +123,8 @@ The model is EmbeddingGemma 2 (Apache 2.0): text, images and audio in one 768-di
     --embeddings --pooling mean --image-max-tokens 140 -c 4096 -ub 2048 -b 2048 --port 8080
   SCHLAU_EMBED_URL=http://127.0.0.1:8080 cargo run -p schlau-app --release
   ```
+
+  or put it in `settings.json` (see Settings) and choose "embeddings server".
 
   (`ggml-org/embeddinggemma-2-GGUF`; `SCHLAU_EMBED_MODEL` and `SCHLAU_EMBED_KEY` for other servers.) At 140 image
   tokens its vectors match the built-in model's to a cosine of 0.9996, so switching keeps the index.

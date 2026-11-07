@@ -9,3 +9,7 @@ description = "Query language, typo-tolerant term correction and hybrid ranking 
 neo_frizbee = "0.13.3"
 unicode-normalization = "0.1.24"
 unicode-general-category = "1.0"
+serde = { workspace = true, optional = true }
+
+[features]
+serde = ["dep:serde"]

@@ -1,4 +1,5 @@
-//! Quick look: an attachment shown over the conversation without leaving the keyboard. Files come
+//! Quick look: an attachment shown over the conversation without leaving the keyboard, in schlau's own
+//! viewer or the system Quick Look panel, as the settings say (`Previewer`). Files come
 //! from the same place the attachment worker gets them (the account, or the fixture folder), are kept
 //! in a cache folder so a second look is instant and ↵ can hand them to the default app, and are
 //! drawn as pictures (photos, PDF pages) or text (documents) through `schlau-extract`, never by a
@@ -14,6 +15,7 @@ use schlau_store::Attachment;
 use schlau_sync::{BlobError, BlobSource};
 
 use crate::reader::human_size;
+use crate::settings::Previewer;
 use crate::state::Ui;
 
 /// The attachment being looked at, and its siblings in the same message for ← and →.
@@ -45,6 +47,23 @@ pub enum Body {
     Pictures(Vec<(Vec<u8>, f32)>),
     Text(String),
     Nothing(String),
+}
+
+/// The cached files of a message's attachments, for the system panel.
+pub struct Files {
+    pub paths: Vec<PathBuf>,
+    pub index: usize,
+    pub error: Option<String>,
+}
+
+/// Fetches every attachment into the cache. The one asked for comes first, so a slow sibling never
+/// keeps it from showing for long; `index` follows it among the files that made it.
+pub fn fetch_files(requests: Vec<Request>, index: usize) -> Files {
+    let fetched: Vec<Result<Option<PathBuf>, String>> = requests.iter().map(|r| fetch(r).map(|(_, path)| path)).collect();
+    let wanted_ok = fetched.get(index).is_some_and(|f| matches!(f, Ok(Some(_))));
+    let index = fetched[..index.min(fetched.len())].iter().filter(|f| matches!(f, Ok(Some(_)))).count();
+    let error = fetched.iter().find_map(|f| f.as_ref().err().cloned()).filter(|_| !wanted_ok);
+    Files { paths: fetched.into_iter().filter_map(|f| f.ok().flatten()).collect(), index, error }
 }
 
 pub struct Request {
@@ -109,13 +128,40 @@ pub fn content(body: Result<Body, String>, images: &ImageCache) -> Content {
 }
 
 impl Ui {
-    /// Quick-looks attachment `index` of the open conversation's focused message.
+    /// Quick-looks attachment `index` of a message's attachments, in the viewer the settings name.
     pub fn quick_look(&mut self, attachments: Vec<Attachment>, index: usize) {
         if attachments.is_empty() {
             self.toast("No attachments in this message");
             return;
         }
         let index = index.min(attachments.len() - 1);
+        match self.settings.effective().preview {
+            Previewer::Macos if crate::quicklook::AVAILABLE => self.quick_look_system(attachments, index),
+            _ => self.quick_look_here(attachments, index),
+        }
+    }
+
+    fn quick_look_system(&mut self, attachments: Vec<Attachment>, index: usize) {
+        let Some(blobs) = self.blobs.clone() else {
+            self.toast("Attachments can't be fetched in this mode");
+            return;
+        };
+        let cache = self.attachment_cache.clone();
+        let requests =
+            attachments.into_iter().map(|attachment| Request { attachment, blobs: blobs.clone(), cache: cache.clone() }).collect();
+        self.preview_files.request(requests, move |requests| fetch_files(requests, index));
+    }
+
+    /// The system panel's files are in the cache.
+    pub fn preview_files_loaded(&mut self, files: Files) {
+        match (files.paths.is_empty(), files.error) {
+            (_, Some(e)) => self.toast(e),
+            (true, None) => self.toast("Nothing to preview"),
+            (false, None) => crate::quicklook::show(&files.paths, files.index),
+        }
+    }
+
+    fn quick_look_here(&mut self, attachments: Vec<Attachment>, index: usize) {
         self.preview = Some(Preview { attachments, index, content: Content::Loading, path: None });
         self.load_preview();
     }
@@ -153,18 +199,43 @@ impl Ui {
     }
 
     fn open_preview_externally(&mut self) {
-        match self.preview.as_ref().and_then(|p| p.path.clone()) {
-            Some(path) => {
-                if let Err(e) = std::process::Command::new("open").arg(&path).spawn() {
-                    self.toast(format!("Couldn't open it: {e}"));
-                }
-            }
-            None => self.toast("Still fetching the file"),
-        }
+        let path = self.preview.as_ref().and_then(|p| p.path.clone());
+        open_file(self, path);
     }
 }
 
-/// Keys while quick look is open: it takes all of them.
+/// Keys while the system panel is open: the window keeps the keyboard, so these drive the panel.
+/// Anything else closes it and goes on to the keymap, as in Finder.
+pub fn on_system_key(s: &mut Ui, ev: &KeyEvent) -> bool {
+    match &ev.key {
+        Key::Escape => crate::quicklook::close(),
+        Key::Text(t) if t == " " || t == "q" => crate::quicklook::close(),
+        Key::Left => crate::quicklook::step(-1),
+        Key::Right => crate::quicklook::step(1),
+        Key::Text(t) if t == "h" => crate::quicklook::step(-1),
+        Key::Text(t) if t == "l" => crate::quicklook::step(1),
+        Key::Enter => open_file(s, crate::quicklook::current()),
+        Key::Text(t) if t == "o" => open_file(s, crate::quicklook::current()),
+        _ => {
+            crate::quicklook::close();
+            return false;
+        }
+    }
+    true
+}
+
+fn open_file(s: &mut Ui, path: Option<PathBuf>) {
+    match path {
+        Some(path) => {
+            if let Err(e) = std::process::Command::new("open").arg(&path).spawn() {
+                s.toast(format!("Couldn't open it: {e}"));
+            }
+        }
+        None => s.toast("Still fetching the file"),
+    }
+}
+
+/// Keys while schlau's viewer is open: it takes all of them.
 pub fn on_key(s: &mut Ui, ev: &KeyEvent) -> bool {
     match &ev.key {
         Key::Escape => s.preview = None,

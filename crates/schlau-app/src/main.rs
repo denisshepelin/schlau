@@ -3,9 +3,12 @@ mod commands;
 mod demo;
 mod format;
 mod preview;
+mod quicklook;
 mod rank;
 mod reader;
 mod search;
+mod settings;
+mod settings_pane;
 mod state;
 mod theme;
 mod view;
@@ -17,7 +20,7 @@ use std::time::Duration;
 
 use rune::{App, AppSpec, KeyEvent, Tx, Waker};
 use schlau_store::Store;
-use schlau_sync::{AttachmentWorker, BlobSource, Connect, Engine, FixtureBlobs, JmapBlobs, MediaBackend, Notify, SharedMedia};
+use schlau_sync::{AttachmentWorker, BlobSource, Connect, Engine, FixtureBlobs, JmapBlobs, Notify, Search, SharedMedia};
 
 use crate::state::Ui;
 
@@ -59,6 +62,10 @@ fn data_dir() -> PathBuf {
     dir
 }
 
+fn models_dir() -> PathBuf {
+    data_dir().join("models")
+}
+
 fn open_store(args: &Args) -> (PathBuf, Store) {
     let name = match (&args.fixtures, args.demo) {
         (Some(_), _) => "fixtures.sqlite",
@@ -76,19 +83,6 @@ fn open_store(args: &Args) -> (PathBuf, Store) {
     (path, store)
 }
 
-/// Where image search gets its model: a running server when `SCHLAU_EMBED_URL` names one (llama-server
-/// with EmbeddingGemma 2, or any OpenAI-compatible embeddings endpoint), the built-in model otherwise.
-fn media_backend() -> MediaBackend {
-    match std::env::var("SCHLAU_EMBED_URL").ok().filter(|u| !u.trim().is_empty()) {
-        Some(url) => MediaBackend::Remote {
-            url,
-            model: std::env::var("SCHLAU_EMBED_MODEL").unwrap_or_else(|_| "embeddinggemma-2".into()),
-            key: std::env::var("SCHLAU_EMBED_KEY").ok(),
-        },
-        None => MediaBackend::Local { cache: data_dir().join("models") },
-    }
-}
-
 /// Where attachment files come from: the account, or the files next to a fixture mailbox. The demo
 /// data has none.
 fn blob_source(args: &Args, connect: Option<Connect>) -> Option<Arc<dyn BlobSource>> {
@@ -99,18 +93,31 @@ fn blob_source(args: &Args, connect: Option<Connect>) -> Option<Arc<dyn BlobSour
     }
 }
 
-fn attachment_worker(args: &Args, path: &Path, connect: Option<Connect>, shared: &SharedMedia) -> Option<AttachmentWorker> {
+fn attachment_worker(
+    args: &Args,
+    path: &Path,
+    connect: Option<Connect>,
+    shared: &SharedMedia,
+    settings: &settings::Settings,
+) -> Option<AttachmentWorker> {
     let blobs = blob_source(args, connect)?;
-    Some(AttachmentWorker { path: path.to_path_buf(), blobs, backend: Some(media_backend()), shared: shared.clone() })
+    Some(AttachmentWorker { path: path.to_path_buf(), blobs, backend: settings.search.attachment_backend(&models_dir()), shared: shared.clone() })
 }
 
 fn setup(s: &mut Ui, waker: Waker) {
     s.search_results.set_waker(waker.clone());
     s.preview_loads.set_waker(waker.clone());
+    s.preview_files.set_waker(waker.clone());
     s.images = Some(rune::ImageCache::new(waker.clone()));
     let Some(store) = s.pending_store.take() else { return };
     let notify = Notify::new(move || waker());
-    let engine = Engine::new(store, notify.clone()).with_semantic(s.embedder.clone(), data_dir().join("models"));
+    let search = Search {
+        settings: s.settings.effective().search,
+        cache: s.models_dir.clone(),
+        text: s.embedder.clone(),
+        media: s.media.clone(),
+    };
+    let engine = Engine::new(store, notify.clone()).with_search(search);
     let engine = match s.pending_connect.take() {
         Some(connect) => engine.with_remote(connect),
         None => engine,
@@ -127,6 +134,9 @@ fn setup(s: &mut Ui, waker: Waker) {
 fn poll(s: &mut Ui, clock: f64, tx: &mut Tx) -> bool {
     s.clock = clock;
     let mut changed = false;
+    if settings_pane::focus_pending(s) {
+        changed = true;
+    }
     if let Some(key) = s.pending_scroll.take() {
         tx.scroll_into_view(key);
         changed = true;
@@ -149,12 +159,16 @@ fn poll(s: &mut Ui, clock: f64, tx: &mut Tx) -> bool {
             changed = true;
         }
     }
-    let media_ready = s.media.get().is_some();
-    if media_ready != s.media_ready {
-        s.media_ready = media_ready;
+    let models = (s.embedder.get().map(|m| m.id().to_string()), s.attachment_model().map(|m| m.id().to_string()));
+    if models != s.models_in_use {
+        s.models_in_use = models;
         if s.search.is_some() {
             s.request_search();
         }
+    }
+    if let Some(files) = s.preview_files.take() {
+        s.preview_files_loaded(files);
+        changed = true;
     }
     if let Some(loaded) = s.preview_loads.take() {
         s.preview_loaded(loaded);
@@ -188,6 +202,12 @@ fn on_key(s: &mut Ui, ev: &KeyEvent, tx: &mut Tx) -> bool {
     if s.preview.is_some() {
         return preview::on_key(s, ev);
     }
+    if quicklook::is_open() && preview::on_system_key(s, ev) {
+        return true;
+    }
+    if s.settings_pane.is_some() {
+        return settings_pane::on_key(s, ev, tx);
+    }
     let before = (s.selected, s.thread.as_ref().map(|t| t.thread_id.clone()));
     let handled = commands::dispatch(s, ev, tx);
     let after = (s.selected, s.thread.as_ref().map(|t| t.thread_id.clone()));
@@ -212,13 +232,15 @@ fn main() {
     };
     let connect = (!args.offline()).then(account::Account::from_environment).flatten().map(account::Account::connect);
     let media = SharedMedia::default();
+    let settings_file = settings::SettingsFile::load(&path.with_file_name("settings.json"), &models_dir());
+    let settings = settings_file.effective();
     if args.index_attachments
-        && let Some(worker) = attachment_worker(&args, &path, connect.clone(), &media)
+        && let Some(worker) = attachment_worker(&args, &path, connect.clone(), &media, &settings)
         && let Err(e) = worker.run_until_idle()
     {
         eprintln!("indexing attachments failed: {e}");
     }
-    let worker = attachment_worker(&args, &path, connect.clone(), &media);
+    let worker = attachment_worker(&args, &path, connect.clone(), &media, &settings);
     let blobs = blob_source(&args, connect.clone());
     let cache = data_dir().join("attachments");
     App::new(spec)
@@ -228,10 +250,15 @@ fn main() {
             ui.pending_worker = worker;
             ui.blobs = blobs;
             ui.attachment_cache = cache;
+            ui.settings = settings_file;
+            ui.models_dir = models_dir();
             ui
         })
         .on_window(|window| {
-            let _ = window.with_raw_handle(|handle| webview::attach(handle.as_raw()));
+            let _ = window.with_raw_handle(|handle| {
+                webview::attach(handle.as_raw());
+                quicklook::attach(handle.as_raw());
+            });
         })
         .run();
 }

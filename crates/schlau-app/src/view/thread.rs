@@ -63,6 +63,10 @@ pub fn thread_view(t: &OpenThread, k: &Kit, dark: bool) -> El {
         .grow(1.0)
         .min_h(0.0)
         .scroll(ScrollSpec { stick_bottom: false })
+        .on_scroll_offset({
+            let at = t.scroll.clone();
+            move |pos| at.set(pos)
+        })
         .child(row().w_full().justify_center().child(page))
 }
 

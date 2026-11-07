@@ -20,10 +20,21 @@ pub struct Command {
 pub const COMMANDS: &[Command] = &[
     Command { id: "palette", title: "Command palette", keys: &["mod+k"], run: open_palette },
     Command { id: "search", title: "Search", keys: &["/"], run: open_search },
-    Command { id: "next", title: "Next conversation", keys: &["j"], run: |s, _| next(s, 1) },
-    Command { id: "previous", title: "Previous conversation", keys: &["k"], run: |s, _| next(s, -1) },
+    Command { id: "down", title: "Down: scroll the open conversation, or the next one", keys: &["j"], run: |s, tx| down(s, Scroll::Lines(1.0), tx) },
+    Command { id: "up", title: "Up: scroll the open conversation, or the previous one", keys: &["k"], run: |s, tx| down(s, Scroll::Lines(-1.0), tx) },
+    Command { id: "next", title: "Next conversation", keys: &["shift+j"], run: |s, _| next(s, 1) },
+    Command { id: "previous", title: "Previous conversation", keys: &["shift+k"], run: |s, _| next(s, -1) },
+    Command { id: "next-message", title: "Next message in the conversation", keys: &["n"], run: |s, tx| step_message(s, 1, tx) },
+    Command { id: "previous-message", title: "Previous message in the conversation", keys: &["p"], run: |s, tx| step_message(s, -1, tx) },
+    Command { id: "half-page-down", title: "Half a page down", keys: &["ctrl+d"], run: |s, tx| down(s, Scroll::Pages(0.5), tx) },
+    Command { id: "half-page-up", title: "Half a page up", keys: &["ctrl+u"], run: |s, tx| down(s, Scroll::Pages(-0.5), tx) },
+    Command { id: "page-down", title: "Page down", keys: &["pagedown", "ctrl+f"], run: |s, tx| down(s, Scroll::Pages(1.0), tx) },
+    Command { id: "page-up", title: "Page up", keys: &["pageup", "ctrl+b"], run: |s, tx| down(s, Scroll::Pages(-1.0), tx) },
+    Command { id: "top", title: "Top: start of the conversation, or the newest one", keys: &["g g", "home"], run: |s, tx| down(s, Scroll::Top, tx) },
+    Command { id: "bottom", title: "Bottom: end of the conversation, or the oldest loaded one", keys: &["shift+g", "end"], run: |s, tx| down(s, Scroll::Bottom, tx) },
     Command { id: "open", title: "Open conversation", keys: &["enter", "o", "l"], run: |s, _| s.open_selected() },
     Command { id: "back", title: "Back", keys: &["escape", "u", "h"], run: back },
+    Command { id: "settings", title: "Settings", keys: &["mod+,"], run: |s, _| crate::settings_pane::toggle(s) },
     Command { id: "folders", title: "Go to folder…", keys: &["g f", "g l"], run: open_folders },
     Command { id: "quick-look", title: "Quick look attachments", keys: &["space"], run: quick_look },
     Command { id: "archive", title: "Mark done (archive)", keys: &["e"], run: archive },
@@ -36,9 +47,6 @@ pub const COMMANDS: &[Command] = &[
     Command { id: "web", title: "View original (secure web view)", keys: &["v"], run: toggle_web },
     Command { id: "expand", title: "Expand all messages", keys: &["shift+e"], run: expand_all },
     Command { id: "refresh", title: "Sync now", keys: &["mod+r"], run: refresh },
-    Command { id: "semantic", title: "Enable meaning search (downloads a 530 MB model once)", keys: &[], run: enable_semantic },
-    Command { id: "media", title: "Enable image and attachment search (downloads a 1.5 GB model once)", keys: &[], run: enable_media },
-    Command { id: "top", title: "Jump to newest", keys: &["shift+k"], run: |s, _| next(s, isize::MIN / 2) },
     Command { id: "go-inbox", title: "Go to Inbox", keys: &["g i"], run: |s, _| go_role(s, "inbox") },
     Command { id: "go-archive", title: "Go to Archive", keys: &["g e"], run: |s, _| go_role(s, "archive") },
     Command { id: "go-sent", title: "Go to Sent", keys: &["g t"], run: |s, _| go_role(s, "sent") },
@@ -82,15 +90,20 @@ fn describe(ev: &KeyEvent) -> Option<String> {
         Key::Text(t) if t == " " => "space".to_string(),
         Key::Text(t) => {
             let lower = t.to_lowercase();
-            return Some(match (m.shift && lower != *t, m.alt) {
-                (true, _) => format!("shift+{lower}"),
-                (_, true) => format!("alt+{lower}"),
+            return Some(match (m.ctrl && !m.cmd, m.shift && (lower != *t || lower.chars().all(char::is_alphabetic)), m.alt) {
+                (true, _, _) => format!("ctrl+{lower}"),
+                (_, true, _) => format!("shift+{lower}"),
+                (_, _, true) => format!("alt+{lower}"),
                 _ => t.clone(),
             });
         }
         Key::Command(c) => return Some(format!("mod+{}{c}", if m.shift { "shift+" } else { "" })),
         Key::Enter => "enter".into(),
         Key::Escape => "escape".into(),
+        Key::PageDown => "pagedown".into(),
+        Key::PageUp => "pageup".into(),
+        Key::Home => "home".into(),
+        Key::End => "end".into(),
         Key::Down => return Some("j".into()),
         Key::Up => return Some("k".into()),
         Key::Left => return Some("h".into()),
@@ -142,6 +155,7 @@ fn open_palette(s: &mut Ui, _: &mut Tx) {
     s.palette = Some(Palette { query, picked: 0, folders: false });
 }
 
+
 fn open_folders(s: &mut Ui, _: &mut Tx) {
     let mut query = TextEdit::new("");
     query.focused = true;
@@ -179,6 +193,69 @@ fn next(s: &mut Ui, delta: isize) {
         }
         None => s.move_selection(delta),
     }
+}
+
+/// How far a movement key goes: in the open conversation, a scroll; in the list, rows.
+#[derive(Debug, Clone, Copy, PartialEq)]
+enum Scroll {
+    Lines(f32),
+    Pages(f32),
+    Top,
+    Bottom,
+}
+
+/// A line step: about three lines of body text.
+const SCROLL_LINE: f32 = 60.0;
+/// Rows a page moves the selection in the list.
+const LIST_PAGE: f32 = 20.0;
+/// Within this of the last scroll key, the next one adds to its goal: key repeat keeps gliding.
+const SCROLL_REPEAT: std::time::Duration = std::time::Duration::from_millis(300);
+const SCROLL_SPRING: rune::Spring = rune::Spring::new(0.18, 0.0);
+
+/// The reader offset `by` asks for, from `base`, for a viewport at `at`.
+fn scroll_target(by: Scroll, base: f32, at: &rune::ScrollPos) -> f32 {
+    let target = match by {
+        Scroll::Lines(n) => base + n * SCROLL_LINE,
+        Scroll::Pages(n) => base + n * at.viewport[1] * 0.9,
+        Scroll::Top => 0.0,
+        Scroll::Bottom => at.max[1],
+    };
+    target.clamp(0.0, at.max[1].max(0.0))
+}
+
+/// Scrolls the open conversation; in the list, moves the selection.
+fn down(s: &mut Ui, by: Scroll, tx: &mut Tx) {
+    if s.web.is_some() {
+        return;
+    }
+    let Some(t) = s.thread.as_mut() else {
+        let rows = match by {
+            Scroll::Lines(n) => n,
+            Scroll::Pages(n) => n * LIST_PAGE,
+            Scroll::Top => f32::MIN / 2.0,
+            Scroll::Bottom => f32::MAX / 2.0,
+        };
+        s.move_selection(rows.clamp(isize::MIN as f32 / 2.0, isize::MAX as f32 / 2.0) as isize);
+        return;
+    };
+    let at = t.scroll.get();
+    let now = std::time::Instant::now();
+    let base = t.scroll_goal.filter(|(_, when)| now - *when < SCROLL_REPEAT).map_or(at.offset[1], |(y, _)| y);
+    let target = scroll_target(by, base, &at);
+    t.scroll_goal = Some((target, now));
+    tx.scroll_to_with("thread", 0.0, target, SCROLL_SPRING);
+}
+
+/// Focuses the next or previous message of the open conversation, opens it and brings its top in.
+fn step_message(s: &mut Ui, delta: isize, tx: &mut Tx) {
+    let Some(t) = s.thread.as_mut().filter(|t| !t.messages.is_empty()) else { return };
+    let last = t.messages.len() as isize - 1;
+    t.focused = (t.focused as isize + delta).clamp(0, last) as usize;
+    if let Some(open) = t.expanded.get_mut(t.focused) {
+        *open = true;
+    }
+    t.scroll_goal = None;
+    tx.scroll_key_to(format!("m:{}", t.messages[t.focused].id), 12.0);
 }
 
 fn back(s: &mut Ui, _: &mut Tx) {
@@ -324,22 +401,51 @@ fn expand_all(s: &mut Ui, _: &mut Tx) {
     }
 }
 
-fn enable_semantic(s: &mut Ui, _: &mut Tx) {
-    if let Some(engine) = &s.engine {
-        engine.send(EngineCommand::EnableSemantic);
-        s.toast("Preparing meaning search in the background");
-    }
-}
 
-fn enable_media(s: &mut Ui, _: &mut Tx) {
-    if let Some(engine) = &s.engine {
-        engine.send(EngineCommand::EnableMediaSearch);
-        s.toast("Preparing image search in the background");
-    }
-}
 
 fn refresh(s: &mut Ui, _: &mut Tx) {
     if let Some(engine) = &s.engine {
         engine.send(EngineCommand::Refresh);
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use rune::Mods;
+
+    fn key(text: &str, mods: Mods) -> Option<String> {
+        describe(&KeyEvent { key: Key::Text(text.into()), mods })
+    }
+
+    #[test]
+    fn keys_are_named_as_the_keymap_spells_them() {
+        assert_eq!(key("j", Mods::default()).as_deref(), Some("j"));
+        assert_eq!(key("J", Mods { shift: true, ..Mods::default() }).as_deref(), Some("shift+j"));
+        assert_eq!(key("j", Mods { shift: true, ..Mods::default() }).as_deref(), Some("shift+j"));
+        assert_eq!(key("#", Mods { shift: true, ..Mods::default() }).as_deref(), Some("#"));
+        assert_eq!(key("d", Mods { ctrl: true, ..Mods::default() }).as_deref(), Some("ctrl+d"), "not archive's e or a plain d");
+        assert_eq!(describe(&Key::PageDown.into()).as_deref(), Some("pagedown"));
+    }
+
+    #[test]
+    fn every_key_sequence_has_one_command() {
+        let mut keys: Vec<&str> = COMMANDS.iter().flat_map(|c| c.keys.iter().copied()).collect();
+        let count = keys.len();
+        keys.sort_unstable();
+        keys.dedup();
+        assert_eq!(keys.len(), count);
+    }
+
+    #[test]
+    fn scroll_targets_stay_inside_the_message() {
+        let mut at = rune::ScrollPos::default();
+        (at.offset, at.max, at.viewport) = ([0.0, 100.0], [0.0, 1000.0], [800.0, 400.0]);
+        assert_eq!(scroll_target(Scroll::Lines(1.0), 100.0, &at), 100.0 + SCROLL_LINE);
+        assert_eq!(scroll_target(Scroll::Lines(-3.0), 100.0, &at), 0.0);
+        assert_eq!(scroll_target(Scroll::Pages(0.5), 100.0, &at), 280.0);
+        assert_eq!(scroll_target(Scroll::Pages(9.0), 100.0, &at), 1000.0);
+        assert_eq!(scroll_target(Scroll::Bottom, 100.0, &at), 1000.0);
+        assert_eq!(scroll_target(Scroll::Top, 500.0, &at), 0.0);
     }
 }

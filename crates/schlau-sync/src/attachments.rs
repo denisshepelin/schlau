@@ -118,20 +118,70 @@ fn load_local(_cache: &Path, _towers: Towers) -> Result<Arc<dyn MediaEmbedder>, 
     Err("this build has no built-in image search model; point SCHLAU_EMBED_URL at a server".into())
 }
 
-/// The model for queries, once there is one: the text tower only when it runs in process.
+/// Loaded query models, one per backend: the text tower when the model runs in process. Message text
+/// and attachments may use different backends; both read from here, and the UI embeds queries with them.
+/// A backend and its loaded query model.
+type Loaded = (MediaBackend, Arc<dyn MediaEmbedder>);
+
 #[derive(Clone, Default)]
-pub struct SharedMedia(Arc<RwLock<Option<Arc<dyn MediaEmbedder>>>>);
+pub struct SharedMedia {
+    models: Arc<RwLock<Vec<Loaded>>>,
+    loading: Arc<Mutex<()>>,
+}
 
 impl SharedMedia {
-    pub fn get(&self) -> Option<Arc<dyn MediaEmbedder>> {
-        self.0.read().ok().and_then(|e| e.clone())
+    /// The query model of `backend`, if loaded.
+    pub fn get(&self, backend: &MediaBackend) -> Option<Arc<dyn MediaEmbedder>> {
+        self.models.read().ok()?.iter().find(|(b, _)| b == backend).map(|(_, m)| m.clone())
     }
 
-    fn set(&self, embedder: Arc<dyn MediaEmbedder>) {
-        if let Ok(mut slot) = self.0.write() {
-            *slot = Some(embedder);
+    /// The query model of `backend`, loading it once (the weights must be on disk).
+    pub fn load(&self, backend: &MediaBackend) -> Result<Arc<dyn MediaEmbedder>, String> {
+        let _loading = self.loading.lock().map_err(|e| e.to_string())?;
+        if let Some(model) = self.get(backend) {
+            return Ok(model);
+        }
+        let model = backend.load(Towers::Text)?;
+        if let Ok(mut models) = self.models.write() {
+            models.push((backend.clone(), model.clone()));
+        }
+        Ok(model)
+    }
+
+    /// Unloads the models of backends no longer in use.
+    pub fn retain(&self, used: &[MediaBackend]) {
+        if let Ok(mut models) = self.models.write() {
+            models.retain(|(b, _)| used.contains(b));
         }
     }
+}
+
+static DOWNLOADING: Mutex<()> = Mutex::new(());
+
+/// Makes `backend` ready: downloads EmbeddingGemma 2 once when it runs in process, reporting progress.
+pub(crate) fn make_ready(backend: &MediaBackend, notify: &Notify) -> Result<(), String> {
+    let MediaBackend::Local { cache } = backend else { return Ok(()) };
+    if !cfg!(feature = "gemma") {
+        return Err("this build has no built-in EmbeddingGemma 2; choose an embeddings server".into());
+    }
+    let _one_at_a_time = DOWNLOADING.lock().map_err(|e| e.to_string())?;
+    if backend.is_ready() {
+        return Ok(());
+    }
+    let total: u64 = EMBEDDINGGEMMA_2.files.iter().filter_map(|f| f.size).sum();
+    let mut done_files = 0u64;
+    let mut current = (String::new(), 0u64);
+    let result = ModelStore::ensure(cache, &EMBEDDINGGEMMA_2, |p| {
+        if p.file != current.0 {
+            done_files += current.1;
+            current = (p.file.to_string(), 0);
+        }
+        current.1 = p.downloaded;
+        let fraction = (done_files + p.downloaded) as f64 / total.max(1) as f64;
+        notify.set_background(Some(format!("Downloading EmbeddingGemma 2, {:.0}%", fraction * 100.0)));
+    });
+    notify.set_background(None);
+    result.map(|_| ()).map_err(|e| format!("EmbeddingGemma 2 download failed: {e}"))
 }
 
 /// What the attachment worker needs: the database, where files come from, and the model.
@@ -145,8 +195,8 @@ pub struct AttachmentWorker {
 pub(crate) enum Signal {
     /// New bodies arrived; there may be new attachments.
     Kick,
-    /// Download the model if needed and start embedding.
-    Enable,
+    /// Embed with this model from now on (downloading it if needed), or with none.
+    Configure(Option<MediaBackend>),
 }
 
 const BATCH: usize = 4;
@@ -160,6 +210,7 @@ struct Indexer {
     worker: AttachmentWorker,
     notify: Notify,
     store: Store,
+    /// The backend is ready and its query model loaded.
     enabled: bool,
     /// The model for documents, loaded while there is work.
     model: Option<Arc<dyn MediaEmbedder>>,
@@ -171,11 +222,8 @@ impl AttachmentWorker {
     /// when the backend is ready; never downloads it.
     pub fn run_until_idle(self) -> Result<(), String> {
         let store = Store::open(&self.path).map_err(|e| e.to_string())?;
-        let enabled = self.backend.as_ref().is_some_and(MediaBackend::is_ready);
-        let mut indexer = Indexer { worker: self, notify: Notify::new(|| {}), store, enabled, model: None, last_work: Instant::now() };
-        if enabled {
-            indexer.load_query_model();
-        }
+        let mut indexer = Indexer { worker: self, notify: Notify::new(|| {}), store, enabled: false, model: None, last_work: Instant::now() };
+        indexer.enabled = indexer.worker.backend.as_ref().is_some_and(MediaBackend::is_ready) && indexer.load_query_model();
         while indexer.step().map_err(|e| e.to_string())? {}
         Ok(())
     }
@@ -183,8 +231,9 @@ impl AttachmentWorker {
     pub(crate) fn spawn(self, notify: Notify, inbox: Receiver<Signal>) {
         let _ = std::thread::Builder::new().name("schlau-attachments".into()).spawn(move || {
             let Ok(store) = Store::open(&self.path) else { return };
-            let enabled = self.backend.as_ref().is_some_and(MediaBackend::is_ready);
-            let mut indexer = Indexer { worker: self, notify, store, enabled, model: None, last_work: Instant::now() };
+            let backend = self.backend.clone();
+            let mut indexer = Indexer { worker: self, notify, store, enabled: false, model: None, last_work: Instant::now() };
+            indexer.configure(backend);
             indexer.run(&inbox);
         });
     }
@@ -208,9 +257,6 @@ fn inputs(name: Option<&str>, extracted: &Extracted) -> Vec<MediaInput> {
 
 impl Indexer {
     fn run(&mut self, inbox: &Receiver<Signal>) {
-        if self.enabled {
-            self.load_query_model();
-        }
         loop {
             match self.step() {
                 Ok(true) => match inbox.try_recv() {
@@ -236,53 +282,39 @@ impl Indexer {
     fn handle(&mut self, signal: Signal) {
         match signal {
             Signal::Kick => {}
-            Signal::Enable if self.enabled => {}
-            Signal::Enable => self.enable(),
+            Signal::Configure(backend) => self.configure(backend),
         }
     }
 
-    fn enable(&mut self) {
-        let Some(backend) = self.worker.backend.clone() else { return };
-        if let MediaBackend::Local { cache } = &backend
-            && cfg!(feature = "gemma")
-        {
-            let total: u64 = EMBEDDINGGEMMA_2.files.iter().filter_map(|f| f.size).sum();
-            let mut done_files = 0u64;
-            let mut current = (String::new(), 0u64);
-            let notify = self.notify.clone();
-            let result = ModelStore::ensure(cache, &EMBEDDINGGEMMA_2, |p| {
-                if p.file != current.0 {
-                    done_files += current.1;
-                    current = (p.file.to_string(), 0);
+    /// Switches to `backend`: downloads and loads it, or stops embedding. Text extraction goes on either way.
+    fn configure(&mut self, backend: Option<MediaBackend>) {
+        if backend != self.worker.backend {
+            self.model = None;
+        }
+        self.worker.backend = backend;
+        self.enabled = match &self.worker.backend {
+            None => false,
+            Some(b) => match make_ready(b, &self.notify) {
+                Ok(()) => self.load_query_model(),
+                Err(e) => {
+                    self.notify.set_background(Some(e));
+                    false
                 }
-                current.1 = p.downloaded;
-                let fraction = (done_files + p.downloaded) as f64 / total.max(1) as f64;
-                notify.set_background(Some(format!("Downloading the image search model, {:.0}%", fraction * 100.0)));
-            });
-            if let Err(e) = result {
-                self.notify.set_background(Some(format!("Image search model download failed: {e}")));
-                return;
-            }
-        }
-        self.enabled = backend.is_ready();
-        if self.enabled {
-            self.load_query_model();
-        } else {
-            self.notify.set_background(Some("Image search needs a build with the model or SCHLAU_EMBED_URL".into()));
-        }
+            },
+        };
     }
 
-    fn load_query_model(&mut self) {
-        let Some(backend) = &self.worker.backend else { return };
-        if self.worker.shared.get().is_some() {
-            return;
-        }
-        match backend.load(Towers::Text) {
-            Ok(model) => {
-                self.worker.shared.set(model);
+    fn load_query_model(&mut self) -> bool {
+        let Some(backend) = &self.worker.backend else { return false };
+        match self.worker.shared.load(backend) {
+            Ok(_) => {
                 self.notify.changed();
+                true
             }
-            Err(e) => self.notify.set_background(Some(format!("Image search unavailable: {e}"))),
+            Err(e) => {
+                self.notify.set_background(Some(format!("Attachment search unavailable: {e}")));
+                false
+            }
         }
     }
 
@@ -294,7 +326,7 @@ impl Indexer {
         if self.model.is_none() {
             let backend = self.worker.backend.as_ref()?;
             self.model = match backend {
-                MediaBackend::Remote { .. } => self.worker.shared.get(),
+                MediaBackend::Remote { .. } => self.worker.shared.get(backend),
                 MediaBackend::Local { .. } => backend.load(Towers::TextAndVision).ok(),
             };
         }
@@ -303,7 +335,11 @@ impl Indexer {
 
     /// Works on one batch. Returns whether there was anything to do.
     fn step(&mut self) -> schlau_store::Result<bool> {
-        let model_id = self.enabled.then(|| self.worker.shared.get()).flatten().map(|m| m.id().to_string());
+        let model_id = self
+            .enabled
+            .then(|| self.worker.backend.as_ref().and_then(|b| self.worker.shared.get(b)))
+            .flatten()
+            .map(|m| m.id().to_string());
         let pending = self.store.reader()?.pending_attachments(model_id.as_deref(), BATCH)?;
         if pending.is_empty() {
             return Ok(false);

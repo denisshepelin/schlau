@@ -3,7 +3,7 @@
 
 use crate::normalize::{normalize, tokenize};
 use crate::query::{Clause, Field, Filter, Query};
-use crate::vocab::{MatchKind, Vocabulary};
+use crate::vocab::{MatchKind, Typos, Vocabulary};
 
 /// A query whose words have been resolved against the vocabulary. Same shape as `Query`.
 #[derive(Debug, Clone, PartialEq, Default)]
@@ -75,6 +75,42 @@ pub struct ExpandOptions {
     pub dominant_ratio: u32,
     /// Shortest word (in characters) that falls back to prefix matching when it is not in the index.
     pub prefix_fallback_min_len: usize,
+    /// How forgiving words are with misspellings.
+    pub typos: Typos,
+    /// How the word still being typed matches.
+    pub last_word: LastWord,
+}
+
+/// How the word still being typed matches.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default, Hash)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize), serde(rename_all = "kebab-case"))]
+pub enum LastWord {
+    /// As a prefix, so results show while typing: `invo` finds "invoice".
+    #[default]
+    Prefix,
+    /// As a whole word, like every other.
+    Whole,
+}
+
+impl LastWord {
+    /// Every choice, in the order a settings list shows them.
+    pub const ALL: [LastWord; 2] = [LastWord::Prefix, LastWord::Whole];
+
+    /// How a settings list names the choice.
+    pub fn label(self) -> &'static str {
+        match self {
+            LastWord::Prefix => "Prefix",
+            LastWord::Whole => "Whole word",
+        }
+    }
+
+    /// What the choice does, for a settings page.
+    pub fn detail(self) -> &'static str {
+        match self {
+            LastWord::Prefix => "The word being typed finds longer words too: inv finds invoice.",
+            LastWord::Whole => "Every word matches whole, the last one too.",
+        }
+    }
 }
 
 impl Default for ExpandOptions {
@@ -83,6 +119,8 @@ impl Default for ExpandOptions {
             max_alternatives: 6,
             dominant_ratio: 20,
             prefix_fallback_min_len: 3,
+            typos: Typos::default(),
+            last_word: LastWord::default(),
         }
     }
 }
@@ -106,8 +144,7 @@ pub fn expand(query: &Query, vocab: &Vocabulary) -> ExpandedQuery {
 /// Resolves every word of `query` against `vocab`. Words are normalized and tokenized like the index;
 /// negated words and phrases are kept exactly as typed.
 pub fn expand_with(query: &Query, vocab: &Vocabulary, options: &ExpandOptions) -> ExpandedQuery {
-    let prefix_at = query
-        .last_is_prefix
+    let prefix_at = (query.last_is_prefix && options.last_word == LastWord::Prefix)
         .then(|| count_text(&query.clauses))
         .and_then(|n| n.checked_sub(1));
     let mut ctx = Ctx {
@@ -216,7 +253,7 @@ impl Ctx<'_> {
     fn alternatives(&self, term: &str, prefix: bool) -> Vec<Alternative> {
         let (vocab, opts) = (self.vocab, self.options);
         let max = opts.max_alternatives.max(1);
-        let corrections = vocab.correct(term, max);
+        let corrections = vocab.correct_with(term, max, opts.typos);
         let exact_df = corrections
             .first()
             .filter(|c| c.kind == MatchKind::Exact)
@@ -349,6 +386,35 @@ mod tests {
 
     fn a(term: &str, prefix: bool, kind: MatchKind) -> (String, bool, MatchKind) {
         (term.to_owned(), prefix, kind)
+    }
+
+    fn terms_with(input: &str, options: &ExpandOptions) -> Vec<String> {
+        match &expand_with(&parse(input, 0), &vocab(), options).clauses[..] {
+            [ExpandedClause::Terms { alternatives, .. }] => alternatives.iter().map(|a| a.term.clone()).collect(),
+            [] => Vec::new(),
+            other => panic!("{other:?}"),
+        }
+    }
+
+    #[test]
+    fn typo_tolerance_is_a_setting() {
+        let with = |typos| ExpandOptions { typos, ..ExpandOptions::default() };
+        assert_eq!(terms_with("invocie ", &with(Typos::Normal)), ["invoice"]);
+        assert_eq!(terms_with("invocie ", &with(Typos::Fewer)), ["invoice"], "seven letters, one typo");
+        assert_eq!(terms_with("shcema ", &with(Typos::Fewer)), ["schema"]);
+        assert_eq!(terms_with("lisbn ", &with(Typos::Fewer)), ["lisbn"], "five letters get none");
+        assert_eq!(terms_with("invocie ", &with(Typos::Off)), ["invocie"], "kept as typed");
+    }
+
+    #[test]
+    fn the_last_word_can_match_whole() {
+        let whole = ExpandOptions { last_word: LastWord::Whole, ..ExpandOptions::default() };
+        let alternatives = |options: &ExpandOptions| match &expand_with(&parse("receive", 0), &vocab(), options).clauses[..] {
+            [ExpandedClause::Terms { alternatives, .. }] => alternatives.iter().map(|a| (a.term.clone(), a.prefix)).collect::<Vec<_>>(),
+            other => panic!("{other:?}"),
+        };
+        assert!(alternatives(&ExpandOptions::default()).contains(&("receive".into(), true)), "still typing: received too");
+        assert_eq!(alternatives(&whole), [("receive".to_string(), false)]);
     }
 
     #[test]

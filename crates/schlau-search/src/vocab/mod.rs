@@ -59,6 +59,52 @@ struct Bucket {
     signatures: Vec<u64>,
 }
 
+/// How forgiving word search is with misspellings.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default, Hash)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize), serde(rename_all = "kebab-case"))]
+pub enum Typos {
+    /// Words match as typed (or as a prefix).
+    Off,
+    /// One typo, in words of 6 characters or more.
+    Fewer,
+    /// One typo from 4 characters, two from 8.
+    #[default]
+    Normal,
+}
+
+impl Typos {
+    /// Every choice, in the order a settings list shows them.
+    pub const ALL: [Typos; 3] = [Typos::Off, Typos::Fewer, Typos::Normal];
+
+    /// How a settings list names the choice.
+    pub fn label(self) -> &'static str {
+        match self {
+            Typos::Off => "Off",
+            Typos::Fewer => "Fewer",
+            Typos::Normal => "Normal",
+        }
+    }
+
+    /// What the choice does, for a settings page.
+    pub fn detail(self) -> &'static str {
+        match self {
+            Typos::Off => "Words match only as typed.",
+            Typos::Fewer => "One typo, in words of six letters or more.",
+            Typos::Normal => "One typo from four letters, two from eight: invocie finds invoice.",
+        }
+    }
+
+    /// Typos allowed in a term of `len` characters.
+    pub fn budget(self, len: usize) -> usize {
+        match (self, len) {
+            (Typos::Off, _) => 0,
+            (Typos::Fewer, 0..=5) => 0,
+            (Typos::Fewer, _) => 1,
+            (Typos::Normal, _) => typo_budget(len),
+        }
+    }
+}
+
 /// Typos allowed for a term of `len` characters: none below 4, one up to 7, two from 8.
 pub fn typo_budget(len: usize) -> usize {
     match len {
@@ -185,11 +231,16 @@ impl Vocabulary {
     ///
     /// `term` must be one normalized token (`crate::tokenize`).
     pub fn correct(&self, term: &str, max_suggestions: usize) -> Vec<Correction> {
+        self.correct_with(term, max_suggestions, Typos::Normal)
+    }
+
+    /// `correct` with another tolerance for typos.
+    pub fn correct_with(&self, term: &str, max_suggestions: usize, typos: Typos) -> Vec<Correction> {
         let exact = self.lookup(term);
         let exact_hit = exact.map(|id| self.correction(id, MatchKind::Exact, 0));
         let chars: Vec<char> = term.chars().collect();
         let budget = if chars.iter().all(|c| c.is_alphabetic()) {
-            typo_budget(chars.len())
+            typos.budget(chars.len())
         } else {
             0
         };

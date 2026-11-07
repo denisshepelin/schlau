@@ -26,7 +26,7 @@ pub use embedder::Embedder;
 pub use error::{Error, Result};
 #[cfg(feature = "gemma")]
 pub use gemma::GemmaEmbedder;
-pub use media::{EMBEDDINGGEMMA_2, EMBEDDINGGEMMA_2_ID, MediaEmbedder, MediaInput, Towers, prompt};
+pub use media::{EMBEDDINGGEMMA_2, EMBEDDINGGEMMA_2_ID, MediaEmbedder, MediaInput, TextOf, Towers, prompt};
 pub use remote::RemoteEmbedder;
 pub use static_model::{POTION_MULTILINGUAL_128M, StaticEmbedder};
 pub use store::{DownloadProgress, ModelFile, ModelPaths, ModelSpec, ModelStore};

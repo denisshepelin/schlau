@@ -44,6 +44,17 @@ JMAP ──(worker thread)──► schlau-sync ──► SQLite (WAL) ◄──
 - The UI asks for data through `rune::Latest` workers, so a query never blocks a frame.
 - The thread list for a mailbox is a covering index scan: `(mailbox_id, received_at DESC)`.
 
+## Settings and providers
+
+Each setting is an enum of its choices (`Typos`, `LastWord` in `schlau-search`; `TextMeaning`, `AttachmentMeaning`
+in `schlau-sync`; `Previewer` in the app), serialized kebab-case in `settings.json`. The app's `Setting` lists the
+settings with their `Choice`s, which the settings pane (`settings_pane.rs`, `view/settings.rs`) draws as rows of
+choices; commands stay in the palette. A search change goes to the engine as `Command::Configure(SearchSettings)`;
+the engine loads the text provider (Model2Vec, or the multimodal model through `TextOf`) and hands the attachment
+backend to the worker. `SharedMedia` holds one loaded query model per backend for the engine, the worker and the
+UI. Vectors are stored per model id (`vectors.model`, `media_vectors.model`, `attachment_embedded`), so switching
+keeps what each model indexed.
+
 ## Performance budget
 
 | Interaction | Budget (p99) | Measured (Apple Silicon, release) |

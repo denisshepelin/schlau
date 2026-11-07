@@ -8,7 +8,8 @@ use schlau_store::{Action, Store};
 
 use std::path::PathBuf;
 
-use crate::attachments::{AttachmentWorker, Signal};
+use crate::attachments::{AttachmentWorker, MediaBackend, SharedMedia, Signal, make_ready};
+use crate::settings::{SearchSettings, TextProvider};
 use crate::push;
 use crate::semantic::{self, SharedEmbedder};
 use crate::remote::{DynClient, Remote};
@@ -26,10 +27,8 @@ pub enum Command {
     FetchBodies(Vec<String>),
     /// Sync now instead of waiting for push.
     Refresh,
-    /// Download the embedding model if needed and embed every message, for meaning search.
-    EnableSemantic,
-    /// Download the multimodal model if needed (or use the configured server) and embed attachments.
-    EnableMediaSearch,
+    /// Search with these models from now on: downloads what is missing and indexes with it.
+    Configure(SearchSettings),
     Shutdown,
 }
 
@@ -122,9 +121,31 @@ pub struct Engine {
     store: Store,
     notify: Notify,
     connect: Option<Connect>,
-    semantic: Option<(SharedEmbedder, PathBuf)>,
+    search: Option<Search>,
     attachments: Option<AttachmentWorker>,
     kick: Option<Sender<Signal>>,
+}
+
+/// The models search uses, and where they live.
+pub struct Search {
+    pub settings: SearchSettings,
+    /// Where models are downloaded to.
+    pub cache: PathBuf,
+    /// The model for message text, once loaded; the UI embeds queries with it too.
+    pub text: SharedEmbedder,
+    /// Multimodal query models, shared with the attachment worker and the UI.
+    pub media: SharedMedia,
+}
+
+impl Search {
+    /// Backends the settings use, so the others can be unloaded.
+    fn backends_in_use(&self) -> Vec<MediaBackend> {
+        let text = match self.settings.text_provider(&self.cache) {
+            Some(TextProvider::Media(b)) => Some(b),
+            _ => None,
+        };
+        text.into_iter().chain(self.settings.attachment_backend(&self.cache)).collect()
+    }
 }
 
 /// Work the engine still owes the server or the replica, most urgent first.
@@ -134,8 +155,8 @@ struct Pending {
     bodies: Vec<String>,
     backfill: bool,
     background_bodies: bool,
+    /// Load (and download if needed) the text model the settings name.
     load_model: bool,
-    download_model: bool,
     embed: bool,
 }
 
@@ -143,13 +164,12 @@ const IDLE_SYNC: Duration = Duration::from_secs(300);
 
 impl Engine {
     pub fn new(store: Store, notify: Notify) -> Engine {
-        Engine { store, notify, connect: None, semantic: None, attachments: None, kick: None }
+        Engine { store, notify, connect: None, search: None, attachments: None, kick: None }
     }
 
-    /// Embeds messages for meaning search with the model in `cache`, loaded if it was downloaded
-    /// before; `Command::EnableSemantic` downloads it.
-    pub fn with_semantic(mut self, shared: SharedEmbedder, cache: PathBuf) -> Engine {
-        self.semantic = Some((shared, cache));
+    /// Indexes for meaning search with the models `search.settings` names; `Command::Configure` changes them.
+    pub fn with_search(mut self, search: Search) -> Engine {
+        self.search = Some(search);
         self
     }
 
@@ -196,7 +216,7 @@ impl Engine {
             sync: true,
             backfill: true,
             background_bodies: true,
-            load_model: self.semantic.is_some(),
+            load_model: self.search.is_some(),
             ..Default::default()
         };
         let mut backoff = Duration::from_secs(1);
@@ -311,43 +331,67 @@ impl Engine {
         Ok(())
     }
 
-    /// Work that needs no server: loading or downloading the model and embedding messages.
+    /// Work that needs no server: loading or downloading the text model and embedding messages.
     fn local_step(&mut self, pending: &mut Pending) {
-        let Some((shared, cache)) = self.semantic.clone() else {
-            (pending.load_model, pending.download_model, pending.embed) = (false, false, false);
+        let Some(search) = self.search.as_ref() else {
+            (pending.load_model, pending.embed) = (false, false);
             return;
         };
         if pending.load_model {
             pending.load_model = false;
-            pending.embed |= semantic::load_local(&cache, &shared);
-            return;
-        }
-        if pending.download_model {
-            pending.download_model = false;
-            let notify = self.notify.clone();
-            let result = semantic::download(&cache, &shared, |fraction| {
-                notify.set_status(Status::Preparing(format!("Downloading the search model, {:.0}%", fraction * 100.0)));
-            });
-            match result {
-                Ok(()) => pending.embed = true,
-                Err(e) => self.notify.set_status(Status::Error(format!("model download failed: {e}"))),
+            let (text, media) = (search.text.clone(), search.media.clone());
+            let loaded = match search.settings.text_provider(&search.cache) {
+                None => {
+                    text.clear();
+                    Ok(false)
+                }
+                Some(TextProvider::Model2Vec { cache }) => {
+                    let notify = self.notify.clone();
+                    text.clear();
+                    match semantic::load_local(&cache, &text) {
+                        true => Ok(true),
+                        false => semantic::download(&cache, &text, |fraction| {
+                            notify.set_background(Some(format!("Downloading Model2Vec, {:.0}%", fraction * 100.0)));
+                        })
+                        .map(|()| true),
+                    }
+                }
+                Some(TextProvider::Media(backend)) => {
+                    text.clear();
+                    make_ready(&backend, &self.notify)
+                        .and_then(|()| media.load(&backend))
+                        .map(|model| {
+                            text.set(Arc::new(schlau_embed::TextOf(model)));
+                            true
+                        })
+                }
+            };
+            match loaded {
+                Ok(embed) => pending.embed = embed,
+                Err(e) => self.notify.set_background(Some(format!("Message meaning search unavailable: {e}"))),
             }
+            self.notify.changed();
             return;
         }
         if pending.embed {
-            let Some(embedder) = shared.get() else {
+            let Some(embedder) = search.text.get() else {
                 pending.embed = false;
                 return;
             };
-            match semantic::embed_batch(&mut self.store, embedder.as_ref()) {
+            let batch = if matches!(search.settings.text_meaning, crate::TextMeaning::Model2Vec) {
+                semantic::FAST_BATCH
+            } else {
+                semantic::SLOW_BATCH
+            };
+            match semantic::embed_batch(&mut self.store, embedder.as_ref(), batch) {
                 Ok(0) => {
                     pending.embed = false;
-                    self.notify.set_status(Status::Idle);
+                    self.notify.set_background(None);
                     self.notify.changed();
                 }
                 Ok(_) => {
-                    let total = self.store.reader().and_then(|r| r.vector_count()).unwrap_or(0);
-                    self.notify.set_status(Status::Preparing(format!("Indexing meaning, {total} passages")));
+                    let (done, total) = self.store.reader().and_then(|r| r.vector_progress(embedder.id())).unwrap_or((0, 0));
+                    self.notify.set_background(Some(format!("Indexing message meaning, {done} of {total}")));
                 }
                 Err(e) => {
                     pending.embed = false;
@@ -377,17 +421,26 @@ impl Engine {
             }
             Command::FetchBodies(ids) => pending.bodies.extend(ids),
             Command::Refresh => pending.sync = true,
-            Command::EnableSemantic => {
-                pending.download_model = self.semantic.as_ref().is_some_and(|(s, _)| s.get().is_none());
-                pending.embed = true;
+            Command::Configure(settings) => {
+                let Some(search) = self.search.as_mut() else { return };
+                let text_changed = settings.text_provider(&search.cache) != search.settings.text_provider(&search.cache);
+                let attachments_changed =
+                    settings.attachment_backend(&search.cache) != search.settings.attachment_backend(&search.cache);
+                search.settings = settings;
+                let attachments = search.settings.attachment_backend(&search.cache);
+                search.media.retain(&search.backends_in_use());
+                pending.load_model |= text_changed;
+                if attachments_changed {
+                    self.kick(Signal::Configure(attachments));
+                }
+                self.notify.changed();
             }
-            Command::EnableMediaSearch => self.kick(Signal::Enable),
             Command::Shutdown => {}
         }
     }
 
     fn run_local(mut self, inbox: Receiver<Command>) {
-        let mut pending = Pending { load_model: self.semantic.is_some(), ..Default::default() };
+        let mut pending = Pending { load_model: self.search.is_some(), ..Default::default() };
         loop {
             let command = if pending.has_local_work() {
                 inbox.try_recv().ok()
@@ -412,6 +465,6 @@ impl Pending {
     }
 
     fn has_local_work(&self) -> bool {
-        self.load_model || self.download_model || self.embed
+        self.load_model || self.embed
     }
 }

@@ -20,6 +20,8 @@ schlau-embed = { path = "../schlau-embed" }
 schlau-html = { path = "../schlau-html" }
 schlau-extract = { path = "../schlau-extract" }
 jiff = "0.2"
+serde = { workspace = true }
+serde_json = { workspace = true }
 
 [target.'cfg(target_os = "macos")'.dependencies]
 schlau-sync = { path = "../schlau-sync", features = ["metal"] }
@@ -27,5 +29,9 @@ objc2 = "0.6"
 objc2-foundation = "0.3"
 objc2-app-kit = "0.3"
 objc2-web-kit = "0.3"
+objc2-quick-look-ui = { version = "0.3", default-features = false, features = ["std", "QLPreviewItem", "QLPreviewPanel", "objc2-app-kit"] }
 block2 = "0.6"
 raw-window-handle = "0.6"
+
+[dev-dependencies]
+tempfile = "3"

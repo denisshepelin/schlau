@@ -1,7 +1,10 @@
+use std::cell::Cell;
 use std::collections::HashMap;
 use std::path::PathBuf;
+use std::rc::Rc;
+use std::time::Instant;
 
-use rune::{Latest, TextEdit};
+use rune::{Latest, ScrollPos, TextEdit};
 use schlau_store::{Action, Mailbox, MessageView, PageCursor, Reader, Store, ThreadRow};
 use std::sync::Arc;
 
@@ -20,8 +23,8 @@ pub struct Ui {
     pub embedder: SharedEmbedder,
     /// The multimodal model for image and attachment search, once loaded.
     pub media: SharedMedia,
-    /// Whether the open search already used the multimodal model; it may load after the box opens.
-    pub media_ready: bool,
+    /// The message and attachment models the open search used; one may load after the box opens.
+    pub models_in_use: (Option<String>, Option<String>),
     pub pending_worker: Option<AttachmentWorker>,
     pub engine: Option<EngineHandle>,
     pub notify: Option<Notify>,
@@ -46,11 +49,17 @@ pub struct Ui {
     /// Quick look over the conversation, when open.
     pub preview: Option<crate::preview::Preview>,
     pub preview_loads: Latest<crate::preview::Loaded>,
+    /// Files fetched for the system Quick Look panel.
+    pub preview_files: Latest<crate::preview::Files>,
+    pub settings: crate::settings::SettingsFile,
+    pub settings_pane: Option<crate::settings_pane::SettingsPane>,
     /// Decodes attachment pictures off the main thread; made once the window has a waker.
     pub images: Option<rune::ImageCache>,
     /// Where quick look fetches files from: the account or the fixture folder.
     pub blobs: Option<Arc<dyn BlobSource>>,
     pub attachment_cache: PathBuf,
+    /// Where search models are downloaded to.
+    pub models_dir: PathBuf,
     pub pending_chord: Option<char>,
     pub undo: Vec<Vec<Action>>,
     pub toast: Option<Toast>,
@@ -65,6 +74,11 @@ pub struct OpenThread {
     pub bodies: HashMap<String, crate::reader::Rendered>,
     pub expanded: Vec<bool>,
     pub focused: usize,
+    /// Where the reader is scrolled to, as the last frame drew it.
+    pub scroll: Rc<Cell<ScrollPos>>,
+    /// Where the last scroll key sent the reader, and when: repeated keys add to it rather than
+    /// to where the glide has got to.
+    pub scroll_goal: Option<(f32, Instant)>,
 }
 
 pub struct Palette {
@@ -97,7 +111,7 @@ impl Ui {
             has_account: connect.is_some(),
             embedder: SharedEmbedder::default(),
             media: SharedMedia::default(),
-            media_ready: false,
+            models_in_use: (None, None),
             pending_worker: None,
             pending_connect: connect,
             engine: None,
@@ -118,9 +132,13 @@ impl Ui {
             search_results: Latest::default().debounce(std::time::Duration::from_millis(30)),
             preview: None,
             preview_loads: Latest::default(),
+            preview_files: Latest::default(),
+            settings: crate::settings::SettingsFile::transient(),
+            settings_pane: None,
             images: None,
             blobs: None,
             attachment_cache: PathBuf::new(),
+            models_dir: PathBuf::new(),
             pending_chord: None,
             undo: Vec::new(),
             toast: None,
@@ -230,7 +248,15 @@ impl Ui {
             .unwrap_or(messages.len().saturating_sub(1));
         self.pending_scroll = messages.get(focused).map(|m| format!("m:{}", m.id));
         self.thread =
-            Some(OpenThread { thread_id: thread_id.to_string(), messages, bodies: HashMap::new(), expanded, focused });
+            Some(OpenThread {
+                thread_id: thread_id.to_string(),
+                messages,
+                bodies: HashMap::new(),
+                expanded,
+                focused,
+                scroll: Rc::default(),
+                scroll_goal: None,
+            });
         self.load_bodies();
         if !unread.is_empty() {
             self.perform(vec![Action::SetFlag { message_ids: unread, flag: "$seen".into(), on: true }], false);
@@ -327,7 +353,8 @@ impl Ui {
             query,
             version: self.seen_version,
             embedder: self.embedder.get(),
-            media: self.media.get(),
+            media: self.attachment_model(),
+            words: self.settings.effective().search.expand_options(),
         };
         self.search_results.request(request, crate::search::run);
     }
@@ -346,6 +373,45 @@ impl Ui {
         let picked = search.results.and_then(|r| r.rows.into_iter().nth(search.picked));
         if let Some(row) = picked {
             self.open_thread(&row.thread_id);
+        }
+    }
+
+    /// The query model for attachments, when attachment meaning is on and loaded.
+    pub fn attachment_model(&self) -> Option<std::sync::Arc<dyn schlau_embed::MediaEmbedder>> {
+        let backend = self.settings.effective().search.attachment_backend(&self.models_dir)?;
+        self.media.get(&backend)
+    }
+
+    /// Switches a setting, saves it and tells the engine.
+    pub fn choose(&mut self, choice: crate::settings::Choice) {
+        if choice.needs_server() && self.settings.effective().search.server.is_none() {
+            self.toast("Type the embeddings server's address, then ↵");
+            if self.settings_pane.is_none() {
+                crate::settings_pane::open(self);
+            }
+            if let Some(pane) = self.settings_pane.as_mut() {
+                pane.waiting = Some(choice);
+            }
+            crate::settings_pane::edit(self, crate::settings_pane::PaneRow::ServerUrl);
+            return;
+        }
+        let saved = self.settings.choose(choice);
+        if choice.changes_search() {
+            self.configure_search();
+        }
+        match saved {
+            Ok(()) => self.toast(choice.title()),
+            Err(e) => self.toast(format!("{} (not saved: {e})", choice.title())),
+        }
+    }
+
+    /// Sends the search settings in force to the engine, and reruns an open search with them.
+    pub fn configure_search(&mut self) {
+        if let Some(engine) = &self.engine {
+            engine.send(Command::Configure(self.settings.effective().search));
+        }
+        if self.search.is_some() {
+            self.request_search();
         }
     }
 

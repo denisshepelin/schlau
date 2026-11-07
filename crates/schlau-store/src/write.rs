@@ -163,18 +163,20 @@ impl WriteTx<'_> {
         Ok(true)
     }
 
-    pub fn put_vectors(&self, message_id: &str, chunks: &[Vec<u8>]) -> Result<bool> {
+    /// Stores a message's vectors from `model`, replacing that model's earlier ones.
+    pub fn put_vectors(&self, model: &str, message_id: &str, chunks: &[Vec<u8>]) -> Result<bool> {
         let Some((rowid, _)) = self.message_key(message_id)? else { return Ok(false) };
-        self.tx.prepare_cached("DELETE FROM vectors WHERE message = ?1")?.execute([rowid])?;
-        let mut insert = self.tx.prepare_cached("INSERT INTO vectors(message, chunk, vec) VALUES (?1, ?2, ?3)")?;
-        for (chunk, vec) in chunks.iter().enumerate() {
-            insert.execute(params![rowid, chunk as i64, vec])?;
-        }
+        self.tx.prepare_cached("DELETE FROM vectors WHERE model = ?1 AND message = ?2")?.execute(params![model, rowid])?;
+        let mut insert = self.tx.prepare_cached("INSERT INTO vectors(model, message, chunk, vec) VALUES (?1, ?2, ?3, ?4)")?;
+        chunks.iter().enumerate().try_for_each(|(chunk, vec)| insert.execute(params![model, rowid, chunk as i64, vec]).map(|_| ()))?;
         Ok(true)
     }
 
-    pub fn clear_vectors(&self) -> Result<()> {
-        self.tx.execute("DELETE FROM vectors", [])?;
+    /// Drops what `model` indexed, to free the space of a model no longer used.
+    pub fn forget_model(&self, model: &str) -> Result<()> {
+        self.tx.execute("DELETE FROM vectors WHERE model = ?1", [model])?;
+        self.tx.execute("DELETE FROM media_vectors WHERE model = ?1", [model])?;
+        self.tx.execute("DELETE FROM attachment_embedded WHERE model = ?1", [model])?;
         Ok(())
     }
 

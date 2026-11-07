@@ -1,5 +1,6 @@
 mod list;
 mod overlay;
+mod settings;
 mod thread;
 
 use rune::{Cx, El, col, row, spacer, text};
@@ -10,15 +11,16 @@ use crate::state::Ui;
 use crate::theme;
 
 pub use list::row_key;
+pub use settings::row_key as settings_row_key;
 
 pub fn view(s: &Ui, cx: &mut Cx<Ui>) -> El {
     let dark = cx.system_dark();
     let k = theme::kit(dark);
-    let main = match (&s.thread, &s.web) {
-        (Some(t), Some(id)) => thread::web_view(t, id, &k),
-        (Some(t), None) => thread::thread_view(t, &k, dark),
-        (None, _) => list::thread_list(s, &k, dark),
+    let main = match (&s.settings_pane, &s.thread, &s.web) {
+        (Some(pane), ..) => settings::settings_view(s, pane, &k, dark),
+        (None, thread, web) => main_view(s, thread, web, &k, dark),
     };
+
     let base = col()
         .key("app")
         .w_full()
@@ -29,6 +31,14 @@ pub fn view(s: &Ui, cx: &mut Cx<Ui>) -> El {
         .child(status_bar(s, &k));
     let overlays = [crate::preview::view(s, &k), overlay::palette(s, &k, dark), overlay::search(s, &k, dark), toast(s, &k)];
     rune_kit::root(base, overlays.into_iter().flatten())
+}
+
+fn main_view(s: &Ui, thread: &Option<crate::state::OpenThread>, web: &Option<String>, k: &Kit, dark: bool) -> El {
+    match (thread, web) {
+        (Some(t), Some(id)) => thread::web_view(t, id, k),
+        (Some(t), None) => thread::thread_view(t, k, dark),
+        (None, _) => list::thread_list(s, k, dark),
+    }
 }
 
 fn top_bar(s: &Ui, k: &Kit) -> El {
@@ -64,8 +74,10 @@ fn status_bar(s: &Ui, k: &Kit) -> El {
         Status::Syncing { done, total: None } => format!("Syncing {done}"),
         Status::Error(e) => format!("Sync error: {e}"),
     };
-    let hints = if s.thread.is_some() {
-        "j/k next · e done · # trash · s star · u back · ⌘K commands"
+    let hints = if s.settings_pane.is_some() {
+        "j/k move · h/l change · ↵ edit · esc close"
+    } else if s.thread.is_some() {
+        "j/k scroll · ⇧J/⇧K next · n/p message · e done · u back · ⌘K commands"
     } else {
         "j/k move · ↵ open · e done · # trash · / search · ⌘K commands"
     };

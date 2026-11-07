@@ -18,7 +18,7 @@ pub(crate) fn configure(conn: &Connection) -> Result<()> {
     Ok(())
 }
 
-const MIGRATIONS: &[&str] = &[V1, V2];
+const MIGRATIONS: &[&str] = &[V1, V2, V3];
 
 /// Brings the database to the newest schema. Each migration runs once, in a transaction, and bumps
 /// `user_version`.
@@ -163,4 +163,48 @@ CREATE TABLE media_vectors (
     vec     BLOB NOT NULL,
     PRIMARY KEY (message, part, chunk)
 ) WITHOUT ROWID;
+"#;
+
+/// Vectors are kept per model, so switching the search model back and forth keeps what each one indexed.
+/// Message vectors start over (they were never more than a cache); attachment vectors keep their model.
+const V3: &str = r#"
+DROP TABLE vectors;
+CREATE TABLE vectors (
+    model   TEXT NOT NULL,
+    message INTEGER NOT NULL REFERENCES messages(rowid) ON DELETE CASCADE,
+    chunk   INTEGER NOT NULL,
+    vec     BLOB NOT NULL,
+    PRIMARY KEY (model, message, chunk)
+) WITHOUT ROWID;
+CREATE INDEX vectors_message ON vectors(message);
+
+CREATE TABLE media_vectors_v3 (
+    model   TEXT NOT NULL,
+    message INTEGER NOT NULL REFERENCES messages(rowid) ON DELETE CASCADE,
+    part    INTEGER NOT NULL,
+    chunk   INTEGER NOT NULL,
+    vec     BLOB NOT NULL,
+    PRIMARY KEY (model, message, part, chunk)
+) WITHOUT ROWID;
+INSERT INTO media_vectors_v3(model, message, part, chunk, vec)
+    SELECT a.model, v.message, v.part, v.chunk, v.vec
+    FROM media_vectors v JOIN attachment_index a ON a.message = v.message AND a.part = v.part
+    WHERE a.model IS NOT NULL;
+DROP TABLE media_vectors;
+ALTER TABLE media_vectors_v3 RENAME TO media_vectors;
+CREATE INDEX media_vectors_message ON media_vectors(message);
+
+-- Which models have looked at an attachment, vectors or not, so none of them looks twice.
+CREATE TABLE attachment_embedded (
+    model   TEXT NOT NULL,
+    message INTEGER NOT NULL REFERENCES messages(rowid) ON DELETE CASCADE,
+    part    INTEGER NOT NULL,
+    PRIMARY KEY (model, message, part)
+) WITHOUT ROWID;
+CREATE INDEX attachment_embedded_message ON attachment_embedded(message);
+INSERT INTO attachment_embedded(model, message, part)
+    SELECT model, message, part FROM attachment_index WHERE model IS NOT NULL;
+DROP INDEX attachment_index_state;
+ALTER TABLE attachment_index DROP COLUMN model;
+CREATE INDEX attachment_index_state ON attachment_index(state);
 "#;

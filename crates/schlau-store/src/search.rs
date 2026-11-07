@@ -5,8 +5,8 @@ use std::collections::{HashMap, HashSet};
 
 use rusqlite::types::Value;
 use schlau_search::{
-    ExpandedClause, ExpandedQuery, Field, Filter, Join, LexicalHit, MatchReason, Meaning, MeaningScale, Query,
-    SemanticHit, Vocabulary, clause_to_fts5, expand, fuse, to_fts5_match,
+    ExpandOptions, ExpandedClause, ExpandedQuery, Field, Filter, Join, LexicalHit, MatchReason, Meaning, MeaningScale,
+    Query, SemanticHit, Vocabulary, clause_to_fts5, expand_with, fuse, to_fts5_match,
 };
 
 use crate::Result;
@@ -198,7 +198,20 @@ impl Reader {
         now: i64,
         limit: usize,
     ) -> Result<Vec<SearchHit>> {
-        let expanded = expand(query, vocabulary);
+        self.search_with(query, vocabulary, meaning, now, limit, &ExpandOptions::default())
+    }
+
+    /// `search` with word-matching settings (typo tolerance, how the last word matches).
+    pub fn search_with(
+        &self,
+        query: &Query,
+        vocabulary: &Vocabulary,
+        meaning: Option<MeaningInput<'_>>,
+        now: i64,
+        limit: usize,
+        words: &ExpandOptions,
+    ) -> Result<Vec<SearchHit>> {
+        let expanded = expand_with(query, vocabulary, words);
         let matched = to_fts5_match(&expanded, columns, Join::All);
         let mut residual: Vec<Predicate> = matched.residual.iter().filter_map(clause_predicate).collect();
         residual.extend(matched.excluded.iter().map(|e| fts_membership(e.clone()).not(true)));
