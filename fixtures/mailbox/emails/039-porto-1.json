@@ -1,0 +1,30 @@
+{
+  "id": "039-porto-1",
+  "threadId": "t-porto",
+  "mailboxIds": {
+    "sent": true
+  },
+  "keywords": {
+    "$seen": true
+  },
+  "ago": "24d",
+  "subject": "Re: Weekend in Porto?",
+  "from": [
+    {
+      "name": "Denis Shepelin",
+      "email": "denis@schlau.example"
+    }
+  ],
+  "to": [
+    {
+      "name": "Denis Shepelin",
+      "email": "denis@schlau.example"
+    }
+  ],
+  "preview": "Sounds lovely. The first weekend works for me, I will look at trains.",
+  "hasAttachment": false,
+  "size": 3552,
+  "messageId": [
+    "039-porto-1@fixtures.schlau.example"
+  ]
+}

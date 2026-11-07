@@ -1,0 +1,30 @@
+{
+  "id": "038-porto-0",
+  "threadId": "t-porto",
+  "mailboxIds": {
+    "inbox": true
+  },
+  "keywords": {
+    "$seen": true
+  },
+  "ago": "25d",
+  "subject": "Weekend in Porto?",
+  "from": [
+    {
+      "name": "Mom",
+      "email": "mom@family.example"
+    }
+  ],
+  "to": [
+    {
+      "name": "Denis Shepelin",
+      "email": "denis@schlau.example"
+    }
+  ],
+  "preview": "Dad and I are thinking of Porto at the start of December. Would you like to come for the weekend? We would find a flat near the river.",
+  "hasAttachment": false,
+  "size": 4072,
+  "messageId": [
+    "038-porto-0@fixtures.schlau.example"
+  ]
+}

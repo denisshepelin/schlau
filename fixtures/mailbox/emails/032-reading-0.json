@@ -1,0 +1,30 @@
+{
+  "id": "032-reading-0",
+  "threadId": "t-reading",
+  "mailboxIds": {
+    "inbox": true
+  },
+  "keywords": {
+    "$seen": true
+  },
+  "ago": "13d",
+  "subject": "Reading group: next book",
+  "from": [
+    {
+      "name": "Nora Lindqvist",
+      "email": "nora@lindqvist.example"
+    }
+  ],
+  "to": [
+    {
+      "name": "Denis Shepelin",
+      "email": "denis@schlau.example"
+    }
+  ],
+  "preview": "Hi all, three candidates for November: The Dispossessed, Piranesi, or Klara and the Sun. Vote by Friday? Nora",
+  "hasAttachment": false,
+  "size": 3872,
+  "messageId": [
+    "032-reading-0@fixtures.schlau.example"
+  ]
+}

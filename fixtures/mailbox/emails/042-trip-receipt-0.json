@@ -1,0 +1,30 @@
+{
+  "id": "042-trip-receipt-0",
+  "threadId": "t-trip-receipt",
+  "mailboxIds": {
+    "inbox": true
+  },
+  "keywords": {
+    "$seen": true
+  },
+  "ago": "38d",
+  "subject": "Your trip receipt: BER to OSL",
+  "from": [
+    {
+      "name": "Northwind Air",
+      "email": "receipts@northwind.example"
+    }
+  ],
+  "to": [
+    {
+      "name": "Denis Shepelin",
+      "email": "denis@schlau.example"
+    }
+  ],
+  "preview": "Thank you for flying with us. Receipt for booking M3TX9L, Berlin to Oslo, 1 passenger, 142.80 EUR including taxes.",
+  "hasAttachment": false,
+  "size": 3912,
+  "messageId": [
+    "042-trip-receipt-0@fixtures.schlau.example"
+  ]
+}

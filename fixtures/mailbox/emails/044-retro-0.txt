@@ -1,0 +1,1 @@
+Notes from today: what went well (search latency, fewer flaky tests), what did not (review queue), and three actions with owners.

@@ -1,0 +1,30 @@
+{
+  "id": "033-reading-1",
+  "threadId": "t-reading",
+  "mailboxIds": {
+    "inbox": true
+  },
+  "keywords": {
+    "$seen": true
+  },
+  "ago": "12d",
+  "subject": "Re: Reading group: next book",
+  "from": [
+    {
+      "name": "Owen Price",
+      "email": "owen.price@mailbox.example"
+    }
+  ],
+  "to": [
+    {
+      "name": "Denis Shepelin",
+      "email": "denis@schlau.example"
+    }
+  ],
+  "preview": "Piranesi gets my vote. Short enough that we might all actually finish it. Owen",
+  "hasAttachment": false,
+  "size": 3624,
+  "messageId": [
+    "033-reading-1@fixtures.schlau.example"
+  ]
+}

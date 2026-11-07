@@ -1,0 +1,30 @@
+{
+  "id": "047-firmware-0",
+  "threadId": "t-firmware",
+  "mailboxIds": {
+    "inbox": true
+  },
+  "keywords": {
+    "$seen": true
+  },
+  "ago": "98d",
+  "subject": "Keyboard firmware question",
+  "from": [
+    {
+      "name": "Kenji Mori",
+      "email": "kenji@mori.example"
+    }
+  ],
+  "to": [
+    {
+      "name": "Denis Shepelin",
+      "email": "denis@schlau.example"
+    }
+  ],
+  "preview": "Did you ever get the layer toggle working on the split board? Mine keeps sticking on layer two after sleep.",
+  "hasAttachment": false,
+  "size": 3856,
+  "messageId": [
+    "047-firmware-0@fixtures.schlau.example"
+  ]
+}

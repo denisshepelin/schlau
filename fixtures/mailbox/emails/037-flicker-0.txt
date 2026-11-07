@@ -1,0 +1,3 @@
+Marcus Webb opened SCH-298: resizing the window quickly makes rows above the selection jump by one row before settling.
+
+Steps and a recording attached in the issue.

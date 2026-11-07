@@ -1,0 +1,30 @@
+{
+  "id": "049-firmware-2",
+  "threadId": "t-firmware",
+  "mailboxIds": {
+    "inbox": true
+  },
+  "keywords": {
+    "$seen": true
+  },
+  "ago": "96d",
+  "subject": "Re: Keyboard firmware question",
+  "from": [
+    {
+      "name": "Kenji Mori",
+      "email": "kenji@mori.example"
+    }
+  ],
+  "to": [
+    {
+      "name": "Denis Shepelin",
+      "email": "denis@schlau.example"
+    }
+  ],
+  "preview": "That fixed it, thank you.",
+  "hasAttachment": false,
+  "size": 3200,
+  "messageId": [
+    "049-firmware-2@fixtures.schlau.example"
+  ]
+}

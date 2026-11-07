@@ -1,0 +1,320 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>List style prototypes</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;450;500;600;650;700&family=Newsreader:opsz,wght@6..72,500;6..72,600&display=swap" rel="stylesheet">
+<style>
+:root {
+  --page: oklch(0.13 0.008 270);
+  --page-ink: oklch(0.9 0.005 270);
+  --page-faint: oklch(0.62 0.01 270);
+}
+@media (prefers-color-scheme: light) {
+  :root:not([data-theme="dark"]) { --page: oklch(0.95 0.004 270); --page-ink: oklch(0.25 0.01 270); --page-faint: oklch(0.5 0.01 270); }
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; }
+body { background: var(--page); color: var(--page-ink); font: 14px/1.4 Inter, system-ui, sans-serif; }
+
+.app.dark {
+  --bg: oklch(0.17 0.01 270); --layer: oklch(0.205 0.01 270); --rule: oklch(0.26 0.01 270);
+  --ink: oklch(0.94 0.005 270); --muted: oklch(0.76 0.008 270); --faint: oklch(0.58 0.012 270); --ghost: oklch(0.42 0.012 270);
+  --accent: oklch(0.66 0.16 275); --sel: oklch(0.66 0.16 275 / 0.22); --hover: oklch(1 0 0 / 0.04);
+  --avatar-l: 0.42; --avatar-c: 0.09; --avatar-ink: oklch(0.95 0.02 270);
+}
+.app.light {
+  --bg: oklch(0.99 0.003 270); --layer: oklch(0.965 0.004 270); --rule: oklch(0.915 0.006 270);
+  --ink: oklch(0.2 0.01 270); --muted: oklch(0.4 0.01 270); --faint: oklch(0.56 0.01 270); --ghost: oklch(0.75 0.008 270);
+  --accent: oklch(0.55 0.19 275); --sel: oklch(0.55 0.19 275 / 0.13); --hover: oklch(0 0 0 / 0.03);
+  --avatar-l: 0.86; --avatar-c: 0.07; --avatar-ink: oklch(0.32 0.06 270);
+}
+.app {
+  width: 1280px; height: 800px; background: var(--bg); color: var(--ink);
+  display: flex; flex-direction: column; overflow: hidden; font: 14px/1.35 Inter, system-ui, sans-serif;
+  font-feature-settings: "cv11", "ss01"; -webkit-font-smoothing: antialiased;
+}
+.top { height: 52px; flex: none; display: flex; align-items: center; gap: 12px; padding: 0 18px 0 86px; }
+.top b { font-size: 15px; font-weight: 650; }
+.top span { font-size: 12px; color: var(--faint); }
+.top i { margin-left: auto; font-style: normal; font-size: 12px; color: var(--faint); }
+.status { height: 28px; flex: none; display: flex; align-items: center; padding: 0 18px; background: var(--layer); font-size: 12px; color: var(--faint); }
+.status span:last-child { margin-left: auto; }
+.list { flex: 1; min-height: 0; overflow: hidden; }
+.row { cursor: default; }
+.row:hover { background: var(--hover); }
+.row.sel, .row.sel:hover { background: var(--sel); }
+.trunc { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
+.star { color: var(--accent); font-size: 12px; }
+.clip { width: 13px; height: 13px; color: var(--faint); flex: none; }
+.marks { display: flex; gap: 7px; align-items: center; justify-content: flex-end; }
+.tnum { font-variant-numeric: tabular-nums; }
+
+/* Current */
+.cur .row { height: 40px; display: flex; align-items: center; gap: 12px; padding: 0 18px; }
+.cur .dot { width: 6px; height: 6px; border-radius: 3px; flex: none; }
+.cur .unread .dot { background: var(--accent); }
+.cur .who { width: 190px; flex: none; display: flex; gap: 6px; align-items: center; color: var(--muted); }
+.cur .unread .who, .cur .unread .subj { color: var(--ink); font-weight: 650; }
+.cur .who small, .cur .date { font-size: 12px; color: var(--faint); font-weight: 400; }
+.cur .line { flex: 1; color: var(--faint); }
+.cur .subj { color: var(--muted); margin-right: 12px; }
+
+/* A. Editorial */
+.ed .group { padding: 0 0 6px; }
+.ed .head { display: flex; align-items: baseline; gap: 14px; padding: 22px 32px 8px 40px; border-bottom: 1px solid var(--rule); margin-bottom: 4px; }
+.ed .head h2 { margin: 0; font: 600 25px/1 Newsreader, Georgia, serif; letter-spacing: -0.01em; }
+.ed .head .when { font-size: 12px; color: var(--faint); }
+.ed .head .tally { margin-left: auto; font-size: 12px; color: var(--faint); }
+.ed .head .tally b { color: var(--accent); font-weight: 600; }
+.ed .row { position: relative; display: grid; grid-template-columns: 1fr auto; column-gap: 24px; padding: 7px 32px 7px 40px; }
+.ed .row::before { content: ""; position: absolute; left: 24px; top: 13px; width: 6px; height: 6px; border-radius: 3px; }
+.ed .unread::before { background: var(--accent); }
+.ed .subj { font-size: 15.5px; font-weight: 500; letter-spacing: -0.006em; color: var(--muted); }
+.ed .unread .subj { color: var(--ink); font-weight: 650; }
+.ed .meta { grid-column: 1; font-size: 12.5px; color: var(--faint); margin-top: 1px; }
+.ed .meta .from { color: var(--muted); font-weight: 550; }
+.ed .unread .meta .from { color: var(--ink); }
+.ed .meta .n { font-size: 11px; color: var(--faint); margin-left: 4px; }
+.ed .side { grid-column: 2; grid-row: 1 / span 2; display: flex; flex-direction: column; align-items: flex-end; gap: 4px; padding-top: 2px; }
+.ed .time { font-size: 12px; color: var(--faint); }
+
+/* B. Ledger */
+.lg { --cols: 112px 196px minmax(0, 1fr) 46px 26px; }
+.lg .row, .lg .sep { display: grid; grid-template-columns: var(--cols); align-items: center; column-gap: 0; padding-right: 18px; }
+.lg .row { height: 31px; font-size: 13px; }
+.lg .gut { white-space: nowrap; text-align: right; padding-right: 14px; font-size: 12px; color: var(--faint); border-right: 1px solid var(--rule); height: 100%; display: flex; align-items: center; justify-content: flex-end; gap: 7px; }
+.lg .unread .gut { color: var(--ink); }
+.lg .gut::before { content: ""; width: 5px; height: 5px; border-radius: 3px; }
+.lg .unread .gut::before { background: var(--accent); }
+.lg .who { padding: 0 14px; color: var(--muted); }
+.lg .unread .who { color: var(--ink); font-weight: 650; }
+.lg .line { color: var(--faint); padding-right: 12px; }
+.lg .subj { color: var(--muted); }
+.lg .unread .subj { color: var(--ink); font-weight: 600; }
+.lg .n { text-align: right; font-size: 11px; color: var(--faint); }
+.lg .n span { display: inline-block; min-width: 18px; padding: 0 5px; border-radius: 8px; background: var(--layer); text-align: center; line-height: 16px; }
+.lg .sep { height: 30px; }
+.lg .sep .gut { font-size: 10.5px; font-weight: 650; letter-spacing: 0.09em; text-transform: uppercase; color: var(--accent); }
+.lg .sep .gut::before { display: none; }
+.lg .sep .rule { grid-column: 2 / -1; display: flex; align-items: center; gap: 12px; padding-left: 14px; font-size: 11.5px; color: var(--faint); }
+.lg .sep .rule::after { content: ""; flex: 1; height: 1px; background: var(--rule); }
+.lg .sep + .row, .lg .sep { }
+
+/* C. Correspondents */
+.co .head { display: flex; align-items: center; gap: 10px; height: 34px; padding: 10px 24px 0 24px; font-size: 12px; font-weight: 650; color: var(--ink); }
+.co .head .pill { padding: 2px 9px; border-radius: 10px; background: var(--layer); }
+.co .head .when { font-weight: 400; color: var(--faint); }
+.co .head::after { content: ""; flex: 1; height: 1px; background: var(--rule); }
+.co .row { display: grid; grid-template-columns: 58px minmax(0, 1fr) auto; align-items: center; height: 50px; padding: 0 24px 0 20px; }
+.co .faces { position: relative; width: 44px; height: 34px; display: flex; align-items: center; }
+.co .face { width: 32px; height: 32px; border-radius: 50%; display: grid; place-items: center; font-size: 12px; font-weight: 650; letter-spacing: 0.02em; color: var(--avatar-ink); box-shadow: 0 0 0 2px var(--bg); flex: none; }
+.co .faces.many .face { width: 24px; height: 24px; font-size: 9.5px; position: absolute; }
+.co .faces.many .face:nth-child(1) { left: 0; top: 5px; z-index: 3; }
+.co .faces.many .face:nth-child(2) { left: 11px; top: 5px; z-index: 2; }
+.co .faces.many .face:nth-child(3) { left: 22px; top: 5px; z-index: 1; }
+.co .unread .faces::after { content: ""; position: absolute; left: -9px; top: 14px; width: 6px; height: 6px; border-radius: 3px; background: var(--accent); }
+.co .same .face { visibility: hidden; }
+.co .same .faces::before { content: ""; position: absolute; left: 15px; top: -9px; bottom: 8px; width: 2px; border-radius: 1px; background: var(--rule); }
+.co .l1 { display: flex; align-items: baseline; gap: 8px; }
+.co .who { font-size: 14.5px; font-weight: 600; color: var(--muted); letter-spacing: -0.005em; }
+.co .unread .who { color: var(--ink); font-weight: 700; }
+.co .addr { font-size: 11.5px; color: var(--faint); }
+.co .l2 { font-size: 13px; color: var(--faint); margin-top: 1px; }
+.co .subj { color: var(--muted); }
+.co .unread .subj { color: var(--ink); font-weight: 500; }
+.co .side { display: flex; flex-direction: column; align-items: flex-end; gap: 4px; padding-left: 20px; }
+.co .time { font-size: 12px; color: var(--faint); }
+.co .n { font-size: 11px; color: var(--faint); }
+
+/* D. Timeline rail */
+.tl { --rail: 236px; }
+.tl .row { position: relative; display: grid; grid-template-columns: var(--rail) 184px minmax(0, 1fr) 60px; align-items: center; height: 34px; padding-right: 18px; font-size: 13px; }
+.tl .rail { position: relative; height: 100%; display: flex; align-items: center; }
+.tl .rail::before { content: ""; position: absolute; left: 196px; top: 0; bottom: 0; width: 1px; background: var(--rule); }
+.tl .first .rail::before { top: 50%; }
+.tl .last .rail::before { bottom: 50%; }
+.tl .node { position: absolute; left: 193px; width: 7px; height: 7px; border-radius: 4px; background: var(--bg); box-shadow: inset 0 0 0 1.5px var(--ghost); }
+.tl .unread .node { background: var(--accent); box-shadow: 0 0 0 3px var(--bg); }
+.tl .period { position: absolute; left: 22px; top: 7px; width: 92px; line-height: 1.15; white-space: nowrap; }
+.tl .period b { display: block; font-size: 13px; font-weight: 700; color: var(--ink); }
+.tl .period small { font-size: 11px; color: var(--faint); }
+.tl .stamp { position: absolute; right: 54px; white-space: nowrap; font-size: 11.5px; color: var(--faint); }
+.tl .unread .stamp { color: var(--muted); }
+.tl .begin { margin-top: 10px; }
+.tl .begin::after { content: ""; position: absolute; left: var(--rail); right: 18px; top: -5px; height: 1px; background: var(--rule); }
+.tl .list > .row:first-child::after { display: none; }
+.tl .who { padding: 0 14px 0 6px; color: var(--muted); }
+.tl .unread .who { color: var(--ink); font-weight: 650; }
+.tl .who small { color: var(--faint); font-weight: 400; font-size: 11px; margin-left: 5px; }
+.tl .line { color: var(--faint); padding-right: 14px; }
+.tl .subj { color: var(--muted); }
+.tl .unread .subj { color: var(--ink); font-weight: 600; }
+
+/* Gallery */
+.gallery { padding: 28px 24px 60px; max-width: 1640px; margin: 0 auto; }
+.gallery > header { display: flex; align-items: baseline; gap: 16px; margin-bottom: 8px; }
+.gallery h1 { font-size: 20px; margin: 0; font-weight: 650; }
+.gallery > header p { margin: 0; color: var(--page-faint); font-size: 13px; }
+.option { margin-top: 28px; }
+.option h2 { font-size: 15px; margin: 0; font-weight: 650; }
+.option h2 span { color: var(--page-faint); font-weight: 450; margin-left: 8px; }
+.option p { margin: 4px 0 12px; color: var(--page-faint); font-size: 13px; max-width: 900px; }
+.pair { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+.frame { position: relative; width: 100%; aspect-ratio: 1280 / 800; overflow: hidden; border-radius: 10px; box-shadow: 0 0 0 1px oklch(0.5 0 0 / 0.25); }
+.frame .app { position: absolute; left: 0; top: 0; transform-origin: 0 0; }
+@media (max-width: 900px) { .pair { grid-template-columns: 1fr; } }
+body.single { background: transparent; }
+</style>
+</head>
+<body>
+<script>
+const DATA = [{"ago": 3600, "subject": "SCH-311 Search drops results when the query ends with a hyphen", "who": "Tracklane", "preview": "Marcus Webb opened SCH-311: a query ending in a hyphen returns nothing instead of the prefix matches.", "count": 1, "unread": 1, "flagged": true, "attach": false, "from": ["Tracklane"]}, {"ago": 7200, "subject": "Offsite in Lisbon, first ideas", "who": "Jane, Marcus, Priya, me, Tomás", "preview": "Held March 10–12 at LX Factory. Deposit is due next week; I need someone to approve the 30% deposit (1,080 EUR). Dietary list: two vegetarian, one vegan, one nut allergy.", "count": 7, "unread": 1, "flagged": false, "attach": true, "from": ["Jane Cooper", "Marcus Webb", "Priya Natarajan", "Denis Shepelin", "Tomás Ortega", "Jane Cooper", "Priya Natarajan"]}, {"ago": 10800, "subject": "Invitation: Design review · Thu 14:00–15:00", "who": "Sam Okafor", "preview": "Sam Okafor invited you to: Design review Thursday 14:00–15:00 (CET) Where: Video call Agenda: reading view line height, command palette shortcuts, fewer borders.", "count": 1, "unread": 1, "flagged": false, "attach": true, "from": ["Sam Okafor"]}, {"ago": 14400, "subject": "[schlau] Make keyset paging stable when threads share a timestamp (#142)", "who": "Codehub", "preview": "Priya Natarajan approved these changes. One nit on the cursor comparison, otherwise good to merge.", "count": 2, "unread": 1, "flagged": false, "attach": false, "from": ["Codehub", "Codehub"]}, {"ago": 21600, "subject": "Re: FTS5 contentless_delete and rebuilds", "who": "sqlite-users digest", "preview": "> Is it safe to DELETE from a contentless_delete=1 table while readers are > running in WAL mode? Yes. Readers keep their snapshot; the delete lands for the next transaction. What", "count": 1, "unread": 0, "flagged": false, "attach": false, "from": ["sqlite-users digest"]}, {"ago": 25200, "subject": "Brightline Weekly #212: the quiet return of local-first software", "who": "Brightline Weekly", "preview": "Local-first apps are back, sync engines are getting boring in a good way, and a reader asks about CRDT costs.", "count": 1, "unread": 1, "flagged": false, "attach": false, "from": ["Brightline Weekly"]}, {"ago": 72000, "subject": "Bruno at the beach", "who": "Mom, me", "preview": "He looks so happy! Is that the beach near Grandma's house? Send more photos :) On Fri, Mom wrote: > Look who discovered the sea!", "count": 2, "unread": 1, "flagged": false, "attach": true, "from": ["Mom", "Denis Shepelin"]}, {"ago": 86400, "subject": "Your receipt from Lumen Labs: $49.00", "who": "Paystream", "preview": "Lumen Labs, Pro monthly plan. Paid with card ending 4417. Invoice INV-2026-4821 attached.", "count": 1, "unread": 1, "flagged": false, "attach": true, "from": ["Paystream"]}, {"ago": 172800, "subject": "Booking confirmed: SFO → LIS, March 9 (ref K7Q2ZP)", "who": "Northwind Air", "preview": "Your flight SFO to LIS on March 9 is confirmed. Seat 23A, one checked bag. Check-in opens 24 hours before departure.", "count": 1, "unread": 0, "flagged": true, "attach": true, "from": ["Northwind Air"]}, {"ago": 345600, "subject": "Nebenkostenabrechnung 2025 und Wartung der Heizung", "who": "Hausverwaltung Krüger", "preview": "Sehr geehrter Herr Shepelin, anbei erhalten Sie die Nebenkostenabrechnung für 2025. Es ergibt sich eine Nachzahlung von 142,80 EUR, fällig zum 15. Dezember. Außerdem findet am 20", "count": 1, "unread": 1, "flagged": false, "attach": true, "from": ["Hausverwaltung Krüger"]}, {"ago": 432000, "subject": "来週の打ち合わせについて", "who": "Aiko Tanaka", "preview": "Denisさん お疲れさまです。来週の打ち合わせですが、火曜日の午後3時（日本時間）はいかがでしょうか。検索機能のデモを楽しみにしています。 よろしくお願いいたします。 田中", "count": 1, "unread": 0, "flagged": false, "attach": false, "from": ["Aiko Tanaka"]}, {"ago": 518400, "subject": "Saturday at the climbing gym", "who": "Rafael Duarte", "preview": "Hey, are you still in for Saturday morning? I booked the 9:30 slot for two. Bring chalk, mine ran out last time. Rafael", "count": 1, "unread": 0, "flagged": false, "attach": false, "from": ["Rafael Duarte"]}, {"ago": 950400, "subject": "Reading group: next book", "who": "Nora, Owen", "preview": "Piranesi it is. We meet on the 20th at my place, 19:00. I will make soup. Nora", "count": 3, "unread": 1, "flagged": false, "attach": false, "from": ["Nora Lindqvist", "Owen Price", "Nora Lindqvist"]}, {"ago": 1123200, "subject": "[schlau] Release v0.4.0 published", "who": "Codehub", "preview": "v0.4.0 is out: folder switcher, h/l navigation, quick look inside the app, and faster paging on large mailboxes. Full notes in the release page.", "count": 1, "unread": 0, "flagged": false, "attach": false, "from": ["Codehub"]}, {"ago": 1382400, "subject": "Your bike is ready for pickup", "who": "Felix Brandt", "preview": "Hello, the service is done: new chain, brake pads front and rear, gears adjusted. Total 86 EUR. We are open until 18:30. Felix, Brandt Rad", "count": 1, "unread": 0, "flagged": true, "attach": false, "from": ["Felix Brandt"]}, {"ago": 1641600, "subject": "SCH-298 Thread list flickers when the window is resized", "who": "Tracklane", "preview": "Marcus Webb opened SCH-298: resizing the window quickly makes rows above the selection jump by one row before settling. Steps and a recording attached in the is", "count": 1, "unread": 1, "flagged": false, "attach": false, "from": ["Tracklane"]}, {"ago": 2073600, "subject": "Weekend in Porto?", "who": "Mom, me", "preview": "Sounds lovely. The first weekend works for me, I will look at trains.", "count": 2, "unread": 0, "flagged": false, "attach": false, "from": ["Mom", "Denis Shepelin"]}, {"ago": 2851200, "subject": "Intro: Olivia and Denis (data infra)", "who": "Olivia, Ravi", "preview": "Thanks Olivia (to bcc). Denis, would a 30 minute call next Tuesday or Wednesday work? Ravi", "count": 2, "unread": 0, "flagged": false, "attach": false, "from": ["Olivia Hart", "Ravi Menon"]}, {"ago": 3283200, "subject": "Your trip receipt: BER to OSL", "who": "Northwind Air", "preview": "Thank you for flying with us. Receipt for booking M3TX9L, Berlin to Oslo, 1 passenger, 142.80 EUR including taxes.", "count": 1, "unread": 0, "flagged": false, "attach": false, "from": ["Northwind Air"]}, {"ago": 4060800, "subject": "Brightline Weekly #208: small tools, long lives", "who": "Brightline Weekly", "preview": "This week: the text editors still maintained after thirty years, why boring databases win, and a reader question about backups.", "count": 1, "unread": 0, "flagged": false, "attach": false, "from": ["Brightline Weekly"]}, {"ago": 4752000, "subject": "Retro notes: September sprint", "who": "Sam Okafor", "preview": "Notes from today: what went well (search latency, fewer flaky tests), what did not (review queue), and three actions with owners.", "count": 1, "unread": 0, "flagged": true, "attach": false, "from": ["Sam Okafor"]}, {"ago": 5875200, "subject": "Your talk was accepted", "who": "Ingrid Solberg", "preview": "Congratulations, your talk Local first mail at scale was accepted for NordConf. Please confirm by the end of the month and send a short bio.", "count": 1, "unread": 1, "flagged": true, "attach": false, "from": ["Ingrid Solberg"]}, {"ago": 7084800, "subject": "Treppenhausreinigung ab Oktober", "who": "Hausverwaltung Krüger", "preview": "Sehr geehrte Mieterinnen und Mieter, ab Oktober übernimmt eine neue Firma die Reinigung des Treppenhauses, jeweils dienstags. Mit freundlichen Grüßen", "count": 1, "unread": 0, "flagged": false, "attach": false, "from": ["Hausverwaltung Krüger"]}, {"ago": 8294400, "subject": "Keyboard firmware question", "who": "Kenji, me", "preview": "That fixed it, thank you.", "count": 3, "unread": 0, "flagged": false, "attach": false, "from": ["Kenji Mori", "Denis Shepelin", "Kenji Mori"]}, {"ago": 11232000, "subject": "Team photos from the summer party", "who": "Jane Cooper", "preview": "The photos are in the shared album now. Special mention to whoever brought the lemon cake.", "count": 1, "unread": 0, "flagged": false, "attach": false, "from": ["Jane Cooper"]}, {"ago": 13824000, "subject": "Your statement for June is ready", "who": "Kestrel Bank", "preview": "Your monthly statement is available in online banking. This message contains no links; sign in through the app as usual.", "count": 1, "unread": 0, "flagged": false, "attach": false, "from": ["Kestrel Bank"]}];
+const NOW = new Date(2026, 10, 7, 12, 42);
+const DAY = 86400000;
+const rows = DATA.map((r, i) => ({ ...r, id: i, at: new Date(NOW - r.ago * 1000) }));
+
+const MONTHS = ["January","February","March","April","May","June","July","August","September","October","November","December"];
+const MON = MONTHS.map(m => m.slice(0, 3));
+const WEEKDAYS = ["Sunday","Monday","Tuesday","Wednesday","Thursday","Friday","Saturday"];
+const WD = WEEKDAYS.map(d => d.slice(0, 3));
+const midnight = d => new Date(d.getFullYear(), d.getMonth(), d.getDate());
+const daysBetween = (a, b) => Math.round((midnight(b) - midnight(a)) / DAY);
+const monday = d => new Date(midnight(d) - ((d.getDay() + 6) % 7) * DAY);
+const hm = d => `${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`;
+
+const period = d => {
+  const days = daysBetween(d, NOW);
+  if (days === 0) return { key: "today", label: "Today", when: `${WEEKDAYS[d.getDay()]}, ${d.getDate()} ${MONTHS[d.getMonth()]}`, short: `${WD[d.getDay()]} ${d.getDate()} ${MON[d.getMonth()]}` };
+  if (days === 1) return { key: "yesterday", label: "Yesterday", when: `${WEEKDAYS[d.getDay()]}, ${d.getDate()} ${MONTHS[d.getMonth()]}`, short: `${WD[d.getDay()]} ${d.getDate()} ${MON[d.getMonth()]}` };
+  const mon = monday(NOW);
+  if (d >= mon) return { key: "week", label: "This week", when: `since Monday ${mon.getDate()} ${MON[mon.getMonth()]}`, short: `from ${WD[1]} ${mon.getDate()}` };
+  if (d.getMonth() === NOW.getMonth() && d.getFullYear() === NOW.getFullYear()) return { key: "month", label: "This month", when: MONTHS[d.getMonth()], short: MONTHS[d.getMonth()] };
+  const year = d.getFullYear() === NOW.getFullYear() ? "" : ` ${d.getFullYear()}`;
+  return { key: `m${d.getFullYear()}-${d.getMonth()}`, label: `${MONTHS[d.getMonth()]}${year}`, when: `${d.getFullYear()}`, short: `${d.getFullYear()}` };
+};
+
+const shortDate = d => daysBetween(d, NOW) === 0 ? hm(d) : `${MON[d.getMonth()]} ${d.getDate()}`;
+const inPeriodTime = (d, p) =>
+  p.key === "today" || p.key === "yesterday" ? hm(d) : p.key === "week" ? `${WD[d.getDay()]} ${hm(d)}` : `${WD[d.getDay()]} ${d.getDate()}`;
+
+const esc = s => String(s).replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c]);
+const CLIP = `<svg class="clip" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"><path d="M10.5 4.5 5.6 9.4a1.6 1.6 0 0 0 2.3 2.3l5-5a3 3 0 0 0-4.3-4.3L3.4 7.6a4.3 4.3 0 0 0 6.1 6.1L13 10.2"/></svg>`;
+const marks = r => `<span class="marks">${r.flagged ? `<span class="star">★</span>` : ""}${r.attach ? CLIP : ""}</span>`;
+const cls = (r, sel, extra = "") => `row${r.unread ? " unread" : ""}${r.id === sel ? " sel" : ""}${extra ? " " + extra : ""}`;
+
+const grouped = rs => rs.reduce((gs, r) => {
+  const p = period(r.at);
+  const last = gs[gs.length - 1];
+  last && last.p.key === p.key ? last.rows.push(r) : gs.push({ p, rows: [r] });
+  return gs;
+}, []);
+
+const hue = name => [...name].reduce((h, c) => (h * 31 + c.codePointAt(0)) % 360, 7);
+const initials = name => name === "me" ? "Me" : name.split(/\s+/).filter(w => /\p{L}/u.test(w[0] || "")).slice(0, 2).map(w => w[0]).join("").toUpperCase() || name[0];
+const face = name => `<span class="face" style="background: oklch(var(--avatar-l) var(--avatar-c) ${hue(name)})">${esc(initials(name))}</span>`;
+const people = r => [...new Set(r.from)].map(n => n === "Denis Shepelin" ? "me" : n);
+const lead = r => people(r).filter(n => n !== "me").slice(-1)[0] || "me";
+
+const STYLES = {
+  current: {
+    name: "Current",
+    blurb: "Today's list, for reference: one 40 px row per conversation, no time grouping.",
+    list: (rs, sel) => rs.map(r => `
+      <div class="${cls(r, sel)}"><span class="dot"></span>
+        <span class="who"><span class="trunc">${esc(r.who)}</span>${r.count > 1 ? `<small>${r.count}</small>` : ""}</span>
+        <span class="line trunc"><span class="subj">${esc(r.subject)}</span>${esc(r.preview)}</span>
+        ${marks(r)}<span class="date tnum">${shortDate(r.at)}</span></div>`).join(""),
+  },
+  editorial: {
+    name: "A · Editorial",
+    blurb: "A page of headlines. Each period opens with a serif heading, its date and an unread tally. The subject is the largest text on the row; sender and snippet sit beneath it. Fewer rows fit on screen, but each is scanned by its subject.",
+    list: (rs, sel) => grouped(rs).map(({ p, rows }) => {
+      const unread = rows.filter(r => r.unread).length;
+      return `<section class="group"><header class="head"><h2>${p.label}</h2><span class="when">${p.when}</span>
+        <span class="tally">${rows.length} conversation${rows.length > 1 ? "s" : ""}${unread ? ` · <b>${unread} unread</b>` : ""}</span></header>
+        ${rows.map(r => `<div class="${cls(r, sel)}">
+          <div class="subj trunc">${esc(r.subject)}</div>
+          <div class="side"><span class="time tnum">${inPeriodTime(r.at, p)}</span>${marks(r)}</div>
+          <div class="meta trunc"><span class="from">${esc(r.who)}</span>${r.count > 1 ? `<span class="n">${r.count}</span>` : ""}&ensp;${esc(r.preview)}</div>
+        </div>`).join("")}</section>`;
+    }).join(""),
+  },
+  ledger: {
+    name: "B · Ledger",
+    blurb: "Dense columns like an account ledger. A time gutter on the left holds a ruled line; each period is a small accent label in the gutter with a hairline across the page. Sender, subject and snippet each get their own column, and rows are 31 px, denser than today.",
+    list: (rs, sel) => grouped(rs).map(({ p, rows }) => {
+      const unread = rows.filter(r => r.unread).length;
+      return `<div class="sep"><span class="gut">${p.label}</span>
+        <span class="rule">${p.key.startsWith("m") ? p.when : p.when.replace(/^since /, "since ")}${unread ? ` · ${unread} unread` : ""}</span></div>
+        ${rows.map(r => `<div class="${cls(r, sel)}"><span class="gut tnum">${inPeriodTime(r.at, p)}</span>
+          <span class="who trunc">${esc(r.who)}</span>
+          <span class="line trunc"><span class="subj">${esc(r.subject)}</span>&ensp; ${esc(r.preview)}</span>
+          ${marks(r)}<span class="n">${r.count > 1 ? `<span>${r.count}</span>` : ""}</span></div>`).join("")}`;
+    }).join(""),
+  },
+  correspondents: {
+    name: "C · Correspondents",
+    blurb: "Sender first. A monogram, or a stack of up to three for a thread with several people, then the sender's name in the strongest type, with the subject and snippet below. Consecutive conversations from the same sender share one monogram joined by a thread line. Periods are small pills.",
+    list: (rs, sel) => grouped(rs).map(({ p, rows }) => `<div class="head"><span class="pill">${p.label}</span><span class="when">${p.key.startsWith("m") ? p.when : p.short}</span></div>
+      ${rows.map((r, i) => {
+        const ps = people(r);
+        const others = ps.filter(n => n !== "me");
+        const shown = others.length ? others.slice(-3).reverse() : ["me"];
+        const many = shown.length > 1;
+        const same = i > 0 && lead(rows[i - 1]) === lead(r) && !many && people(rows[i - 1]).length === 1;
+        return `<div class="${cls(r, sel, same ? "same" : "")}">
+          <span class="faces${many ? " many" : ""}">${shown.map(face).join("")}</span>
+          <span style="min-width:0"><span class="l1"><span class="who trunc">${esc(ps.length > 1 ? r.who : ps[0])}</span>${r.count > 1 ? `<span class="n">${r.count} messages</span>` : ""}</span>
+            <div class="l2 trunc"><span class="subj">${esc(r.subject)}</span> · ${esc(r.preview)}</div></span>
+          <span class="side"><span class="time tnum">${inPeriodTime(r.at, p)}</span>${marks(r)}</span></div>`;
+      }).join("")}`).join(""),
+  },
+  timeline: {
+    name: "D · Timeline rail",
+    blurb: "Time gets its own rail on the left: the period's name and dates beside the first conversation in it, then a vertical line with one node per conversation, filled for unread. Rows stay single-line at 34 px; a small gap and a hairline open each period, so density is close to today's.",
+    list: (rs, sel) => grouped(rs).map(({ p, rows }, g) => rows.map((r, i) => `
+      <div class="${cls(r, sel, [i === 0 && g > 0 ? "begin" : "", g === 0 && i === 0 ? "first" : ""].filter(Boolean).join(" "))}">
+        <span class="rail">${i === 0 ? `<span class="period"><b>${p.label}</b><small>${p.short}</small></span>` : ""}
+          <span class="stamp tnum">${inPeriodTime(r.at, p)}</span><span class="node"></span></span>
+        <span class="who trunc">${esc(r.who)}${r.count > 1 ? `<small>${r.count}</small>` : ""}</span>
+        <span class="line trunc"><span class="subj">${esc(r.subject)}</span>&ensp; ${esc(r.preview)}</span>
+        ${marks(r)}</div>`).join("")).join(""),
+  },
+};
+
+const unreadTotal = rows.filter(r => r.unread).length;
+const app = (style, theme, sel) => `<div class="app ${theme}">
+  <div class="top"><b>Inbox</b><span>${unreadTotal} unread</span><i>⌘K</i></div>
+  <div class="list ${{ current: "cur", editorial: "ed", ledger: "lg", correspondents: "co", timeline: "tl" }[style]}">${STYLES[style].list(rows, sel)}</div>
+  <div class="status"><span>j/k move · ↵ open · e done · # trash · / search · ⌘K commands</span><span>Offline · local replica</span></div></div>`;
+
+const params = new URLSearchParams(location.search);
+let sel = 0;
+const fit = () => document.querySelectorAll(".frame").forEach(f => {
+  f.firstElementChild.style.transform = `scale(${f.clientWidth / 1280})`;
+});
+const render = () => {
+  if (params.get("style")) {
+    document.body.className = "single";
+    document.body.innerHTML = app(params.get("style"), params.get("theme") || "dark", sel);
+    return;
+  }
+  document.body.innerHTML = `<main class="gallery"><header><h1>Conversation list: five layouts</h1>
+    <p>Fixture inbox, as of Sat 7 Nov 2026, 12:42 · dark and light side by side · j/k moves the selection in every frame</p></header>
+    ${Object.entries(STYLES).map(([key, s]) => `<section class="option"><h2>${s.name}</h2><p>${s.blurb}</p>
+      <div class="pair"><div class="frame">${app(key, "dark", sel)}</div><div class="frame">${app(key, "light", sel)}</div></div></section>`).join("")}</main>`;
+  fit();
+};
+addEventListener("resize", fit);
+addEventListener("keydown", e => {
+  const d = { j: 1, ArrowDown: 1, k: -1, ArrowUp: -1 }[e.key];
+  if (d) { sel = Math.max(0, Math.min(rows.length - 1, sel + d)); render(); }
+});
+document.fonts.ready.then(fit);
+render();
+</script>
+</body>
+</html>

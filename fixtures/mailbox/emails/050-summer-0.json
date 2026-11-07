@@ -1,0 +1,30 @@
+{
+  "id": "050-summer-0",
+  "threadId": "t-summer",
+  "mailboxIds": {
+    "inbox": true
+  },
+  "keywords": {
+    "$seen": true
+  },
+  "ago": "130d",
+  "subject": "Team photos from the summer party",
+  "from": [
+    {
+      "name": "Jane Cooper",
+      "email": "jane@cooper.example"
+    }
+  ],
+  "to": [
+    {
+      "name": "Denis Shepelin",
+      "email": "denis@schlau.example"
+    }
+  ],
+  "preview": "The photos are in the shared album now. Special mention to whoever brought the lemon cake.",
+  "hasAttachment": false,
+  "size": 3720,
+  "messageId": [
+    "050-summer-0@fixtures.schlau.example"
+  ]
+}

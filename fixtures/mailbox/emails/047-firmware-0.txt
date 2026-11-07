@@ -1,0 +1,1 @@
+Did you ever get the layer toggle working on the split board? Mine keeps sticking on layer two after sleep.

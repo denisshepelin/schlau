@@ -1,0 +1,30 @@
+{
+  "id": "051-statement-0",
+  "threadId": "t-statement",
+  "mailboxIds": {
+    "inbox": true
+  },
+  "keywords": {
+    "$seen": true
+  },
+  "ago": "160d",
+  "subject": "Your statement for June is ready",
+  "from": [
+    {
+      "name": "Kestrel Bank",
+      "email": "statements@kestrelbank.example"
+    }
+  ],
+  "to": [
+    {
+      "name": "Denis Shepelin",
+      "email": "denis@schlau.example"
+    }
+  ],
+  "preview": "Your monthly statement is available in online banking. This message contains no links; sign in through the app as usual.",
+  "hasAttachment": false,
+  "size": 3960,
+  "messageId": [
+    "051-statement-0@fixtures.schlau.example"
+  ]
+}

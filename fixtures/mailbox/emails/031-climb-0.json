@@ -1,0 +1,30 @@
+{
+  "id": "031-climb-0",
+  "threadId": "t-climb",
+  "mailboxIds": {
+    "inbox": true
+  },
+  "keywords": {
+    "$seen": true
+  },
+  "ago": "6d",
+  "subject": "Saturday at the climbing gym",
+  "from": [
+    {
+      "name": "Rafael Duarte",
+      "email": "rafael@duarte.example"
+    }
+  ],
+  "to": [
+    {
+      "name": "Denis Shepelin",
+      "email": "denis@schlau.example"
+    }
+  ],
+  "preview": "Hey, are you still in for Saturday morning? I booked the 9:30 slot for two. Bring chalk, mine ran out last time. Rafael",
+  "hasAttachment": false,
+  "size": 3952,
+  "messageId": [
+    "031-climb-0@fixtures.schlau.example"
+  ]
+}

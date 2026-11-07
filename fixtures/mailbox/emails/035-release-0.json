@@ -1,0 +1,30 @@
+{
+  "id": "035-release-0",
+  "threadId": "t-release",
+  "mailboxIds": {
+    "inbox": true
+  },
+  "keywords": {
+    "$seen": true
+  },
+  "ago": "13d",
+  "subject": "[schlau] Release v0.4.0 published",
+  "from": [
+    {
+      "name": "Codehub",
+      "email": "notifications@codehub.example"
+    }
+  ],
+  "to": [
+    {
+      "name": "Denis Shepelin",
+      "email": "denis@schlau.example"
+    }
+  ],
+  "preview": "v0.4.0 is out: folder switcher, h/l navigation, quick look inside the app, and faster paging on large mailboxes. Full notes in the release page.",
+  "hasAttachment": false,
+  "size": 4152,
+  "messageId": [
+    "035-release-0@fixtures.schlau.example"
+  ]
+}

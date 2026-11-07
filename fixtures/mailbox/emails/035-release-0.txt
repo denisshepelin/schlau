@@ -1,0 +1,3 @@
+v0.4.0 is out: folder switcher, h/l navigation, quick look inside the app, and faster paging on large mailboxes.
+
+Full notes in the release page.

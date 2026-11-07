@@ -1,0 +1,30 @@
+{
+  "id": "043-news-208-0",
+  "threadId": "t-news-208",
+  "mailboxIds": {
+    "inbox": true
+  },
+  "keywords": {
+    "$seen": true
+  },
+  "ago": "47d",
+  "subject": "Brightline Weekly #208: small tools, long lives",
+  "from": [
+    {
+      "name": "Brightline Weekly",
+      "email": "editor@brightline.example"
+    }
+  ],
+  "to": [
+    {
+      "name": "Denis Shepelin",
+      "email": "denis@schlau.example"
+    }
+  ],
+  "preview": "This week: the text editors still maintained after thirty years, why boring databases win, and a reader question about backups.",
+  "hasAttachment": false,
+  "size": 4016,
+  "messageId": [
+    "043-news-208-0@fixtures.schlau.example"
+  ]
+}

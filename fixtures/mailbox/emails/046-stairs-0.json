@@ -1,0 +1,30 @@
+{
+  "id": "046-stairs-0",
+  "threadId": "t-stairs",
+  "mailboxIds": {
+    "inbox": true
+  },
+  "keywords": {
+    "$seen": true
+  },
+  "ago": "82d",
+  "subject": "Treppenhausreinigung ab Oktober",
+  "from": [
+    {
+      "name": "Hausverwaltung Krüger",
+      "email": "info@hv-krueger.example"
+    }
+  ],
+  "to": [
+    {
+      "name": "Denis Shepelin",
+      "email": "denis@schlau.example"
+    }
+  ],
+  "preview": "Sehr geehrte Mieterinnen und Mieter, ab Oktober übernimmt eine neue Firma die Reinigung des Treppenhauses, jeweils dienstags. Mit freundlichen Grüßen",
+  "hasAttachment": false,
+  "size": 4192,
+  "messageId": [
+    "046-stairs-0@fixtures.schlau.example"
+  ]
+}

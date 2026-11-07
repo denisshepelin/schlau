@@ -1,0 +1,30 @@
+{
+  "id": "040-intro-0",
+  "threadId": "t-intro",
+  "mailboxIds": {
+    "inbox": true
+  },
+  "keywords": {
+    "$seen": true
+  },
+  "ago": "34d",
+  "subject": "Intro: Olivia and Denis (data infra)",
+  "from": [
+    {
+      "name": "Olivia Hart",
+      "email": "olivia@hartventures.example"
+    }
+  ],
+  "to": [
+    {
+      "name": "Denis Shepelin",
+      "email": "denis@schlau.example"
+    }
+  ],
+  "preview": "Denis, meet Ravi, who runs data infrastructure at Fernway and is evaluating local-first sync. Ravi, meet Denis. I will let you two take it from here. Olivia",
+  "hasAttachment": false,
+  "size": 4248,
+  "messageId": [
+    "040-intro-0@fixtures.schlau.example"
+  ]
+}

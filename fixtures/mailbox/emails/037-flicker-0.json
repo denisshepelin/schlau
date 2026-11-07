@@ -1,0 +1,28 @@
+{
+  "id": "037-flicker-0",
+  "threadId": "t-flicker",
+  "mailboxIds": {
+    "inbox": true
+  },
+  "keywords": {},
+  "ago": "19d",
+  "subject": "SCH-298 Thread list flickers when the window is resized",
+  "from": [
+    {
+      "name": "Tracklane",
+      "email": "noreply@tracklane.example"
+    }
+  ],
+  "to": [
+    {
+      "name": "Denis Shepelin",
+      "email": "denis@schlau.example"
+    }
+  ],
+  "preview": "Marcus Webb opened SCH-298: resizing the window quickly makes rows above the selection jump by one row before settling. Steps and a recording attached in the is",
+  "hasAttachment": false,
+  "size": 4312,
+  "messageId": [
+    "037-flicker-0@fixtures.schlau.example"
+  ]
+}

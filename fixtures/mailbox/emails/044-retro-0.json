@@ -1,0 +1,31 @@
+{
+  "id": "044-retro-0",
+  "threadId": "t-retro",
+  "mailboxIds": {
+    "inbox": true
+  },
+  "keywords": {
+    "$seen": true,
+    "$flagged": true
+  },
+  "ago": "55d",
+  "subject": "Retro notes: September sprint",
+  "from": [
+    {
+      "name": "Sam Okafor",
+      "email": "sam@okafor.example"
+    }
+  ],
+  "to": [
+    {
+      "name": "Denis Shepelin",
+      "email": "denis@schlau.example"
+    }
+  ],
+  "preview": "Notes from today: what went well (search latency, fewer flaky tests), what did not (review queue), and three actions with owners.",
+  "hasAttachment": false,
+  "size": 4032,
+  "messageId": [
+    "044-retro-0@fixtures.schlau.example"
+  ]
+}

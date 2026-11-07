@@ -1,0 +1,30 @@
+{
+  "id": "048-firmware-1",
+  "threadId": "t-firmware",
+  "mailboxIds": {
+    "sent": true
+  },
+  "keywords": {
+    "$seen": true
+  },
+  "ago": "97d",
+  "subject": "Re: Keyboard firmware question",
+  "from": [
+    {
+      "name": "Denis Shepelin",
+      "email": "denis@schlau.example"
+    }
+  ],
+  "to": [
+    {
+      "name": "Denis Shepelin",
+      "email": "denis@schlau.example"
+    }
+  ],
+  "preview": "Yes, it was the sleep timeout. Disable it in the config and flash again, and it stops sticking.",
+  "hasAttachment": false,
+  "size": 3760,
+  "messageId": [
+    "048-firmware-1@fixtures.schlau.example"
+  ]
+}

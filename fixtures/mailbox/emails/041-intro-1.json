@@ -1,0 +1,30 @@
+{
+  "id": "041-intro-1",
+  "threadId": "t-intro",
+  "mailboxIds": {
+    "inbox": true
+  },
+  "keywords": {
+    "$seen": true
+  },
+  "ago": "33d",
+  "subject": "Re: Intro: Olivia and Denis (data infra)",
+  "from": [
+    {
+      "name": "Ravi Menon",
+      "email": "ravi@fernway.example"
+    }
+  ],
+  "to": [
+    {
+      "name": "Denis Shepelin",
+      "email": "denis@schlau.example"
+    }
+  ],
+  "preview": "Thanks Olivia (to bcc). Denis, would a 30 minute call next Tuesday or Wednesday work? Ravi",
+  "hasAttachment": false,
+  "size": 3720,
+  "messageId": [
+    "041-intro-1@fixtures.schlau.example"
+  ]
+}

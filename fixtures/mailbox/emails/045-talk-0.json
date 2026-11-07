@@ -1,0 +1,30 @@
+{
+  "id": "045-talk-0",
+  "threadId": "t-talk",
+  "mailboxIds": {
+    "inbox": true
+  },
+  "keywords": {
+    "$flagged": true
+  },
+  "ago": "68d",
+  "subject": "Your talk was accepted",
+  "from": [
+    {
+      "name": "Ingrid Solberg",
+      "email": "ingrid@nordconf.example"
+    }
+  ],
+  "to": [
+    {
+      "name": "Denis Shepelin",
+      "email": "denis@schlau.example"
+    }
+  ],
+  "preview": "Congratulations, your talk Local first mail at scale was accepted for NordConf. Please confirm by the end of the month and send a short bio.",
+  "hasAttachment": false,
+  "size": 4120,
+  "messageId": [
+    "045-talk-0@fixtures.schlau.example"
+  ]
+}

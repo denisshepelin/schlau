@@ -1,0 +1,3 @@
+Yes, it was the sleep timeout.
+
+Disable it in the config and flash again, and it stops sticking.

@@ -1,0 +1,31 @@
+{
+  "id": "036-bike-0",
+  "threadId": "t-bike",
+  "mailboxIds": {
+    "inbox": true
+  },
+  "keywords": {
+    "$seen": true,
+    "$flagged": true
+  },
+  "ago": "16d",
+  "subject": "Your bike is ready for pickup",
+  "from": [
+    {
+      "name": "Felix Brandt",
+      "email": "werkstatt@brandt-rad.example"
+    }
+  ],
+  "to": [
+    {
+      "name": "Denis Shepelin",
+      "email": "denis@schlau.example"
+    }
+  ],
+  "preview": "Hello, the service is done: new chain, brake pads front and rear, gears adjusted. Total 86 EUR. We are open until 18:30. Felix, Brandt Rad",
+  "hasAttachment": false,
+  "size": 4104,
+  "messageId": [
+    "036-bike-0@fixtures.schlau.example"
+  ]
+}

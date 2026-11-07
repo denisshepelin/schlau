@@ -1,0 +1,28 @@
+{
+  "id": "034-reading-2",
+  "threadId": "t-reading",
+  "mailboxIds": {
+    "inbox": true
+  },
+  "keywords": {},
+  "ago": "11d",
+  "subject": "Re: Reading group: next book",
+  "from": [
+    {
+      "name": "Nora Lindqvist",
+      "email": "nora@lindqvist.example"
+    }
+  ],
+  "to": [
+    {
+      "name": "Denis Shepelin",
+      "email": "denis@schlau.example"
+    }
+  ],
+  "preview": "Piranesi it is. We meet on the 20th at my place, 19:00. I will make soup. Nora",
+  "hasAttachment": false,
+  "size": 3624,
+  "messageId": [
+    "034-reading-2@fixtures.schlau.example"
+  ]
+}
