@@ -42,7 +42,8 @@ body { background: var(--page); color: var(--page-ink); font: 14px/1.4 Inter, sy
 .top i { margin-left: auto; font-style: normal; font-size: 12px; color: var(--faint); }
 .status { height: 28px; flex: none; display: flex; align-items: center; padding: 0 18px; background: var(--layer); font-size: 12px; color: var(--faint); }
 .status span:last-child { margin-left: auto; }
-.list { flex: 1; min-height: 0; overflow: hidden; }
+.list { position: relative; flex: 1; min-height: 0; overflow-y: auto; scrollbar-width: none; }
+.list::-webkit-scrollbar { display: none; }
 .row { cursor: default; }
 .row:hover { background: var(--hover); }
 .row.sel, .row.sel:hover { background: var(--sel); }
@@ -80,6 +81,44 @@ body { background: var(--page); color: var(--page-ink); font: 14px/1.4 Inter, sy
 .ed .meta .n { font-size: 11px; color: var(--faint); margin-left: 4px; }
 .ed .side { grid-column: 2; grid-row: 1 / span 2; display: flex; flex-direction: column; align-items: flex-end; gap: 4px; padding-top: 2px; }
 .ed .time { font-size: 12px; color: var(--faint); }
+
+/* E. Editorial with senders */
+.top.nav { gap: 0; padding-right: 18px; }
+.top.nav b { margin-right: 22px; }
+.top.nav nav { display: flex; gap: 2px; min-width: 0; overflow: hidden; }
+.top.nav .chip { display: flex; align-items: center; gap: 6px; height: 28px; padding: 0 11px; border-radius: 14px; font-size: 12.5px; color: var(--faint); white-space: nowrap; cursor: pointer; }
+.top.nav .chip:hover { color: var(--muted); background: var(--hover); }
+.top.nav .chip.on { color: var(--ink); background: var(--layer); font-weight: 600; box-shadow: inset 0 0 0 1px var(--rule); }
+.top.nav .chip em { font-style: normal; font-size: 11px; font-weight: 650; color: var(--accent); }
+.top.nav .chip.past { color: var(--ghost); }
+.top.nav .chip.past em { color: var(--faint); }
+.top.nav .keys { margin-left: auto; padding-left: 16px; display: flex; gap: 14px; }
+.top.nav .keys kbd { font: inherit; color: var(--muted); }
+.ea .head { display: flex; align-items: baseline; gap: 14px; padding: 20px 32px 8px 32px; border-bottom: 1px solid var(--rule); margin-bottom: 4px; }
+.ea .group:first-child .head { padding-top: 10px; }
+.ea .head h2 { margin: 0; font: 600 25px/1 Newsreader, Georgia, serif; letter-spacing: -0.01em; }
+.ea .head .when { font-size: 12px; color: var(--faint); }
+.ea .head .tally { margin-left: auto; font-size: 12px; color: var(--faint); }
+.ea .head .tally b { color: var(--accent); font-weight: 600; }
+.ea .group { padding-bottom: 6px; }
+.ea .row { position: relative; display: grid; grid-template-columns: 50px minmax(0, 1fr) auto; column-gap: 0; align-items: center; padding: 7px 32px 7px 32px; }
+.ea .row::before { content: ""; position: absolute; left: 16px; top: 50%; margin-top: -3px; width: 6px; height: 6px; border-radius: 3px; }
+.ea .unread::before { background: var(--accent); }
+.ea .faces { position: relative; width: 50px; height: 36px; }
+.ea .face { position: absolute; left: 0; top: 2px; width: 34px; height: 34px; border-radius: 50%; display: grid; place-items: center; font-size: 12px; font-weight: 650; color: var(--avatar-ink); box-shadow: 0 0 0 2px var(--bg); }
+.ea .row.sel .face { box-shadow: 0 0 0 2px transparent; }
+.ea .faces.many .face { width: 24px; height: 24px; top: 6px; font-size: 9.5px; }
+.ea .faces.many .face:nth-child(1) { left: 0; z-index: 2; }
+.ea .faces.many .face:nth-child(2) { left: 19px; z-index: 1; }
+.ea .faces .more { position: absolute; left: 0; top: 32px; font-size: 10px; line-height: 1; color: var(--faint); }
+.ea .subj { font-size: 15.5px; font-weight: 500; letter-spacing: -0.006em; color: var(--muted); }
+.ea .unread .subj { color: var(--ink); font-weight: 650; }
+.ea .meta { font-size: 12.5px; color: var(--faint); margin-top: 1px; }
+.ea .meta .from { color: var(--muted); font-weight: 550; }
+.ea .unread .meta .from { color: var(--ink); }
+.ea .meta .n { font-size: 11px; color: var(--faint); margin-left: 4px; }
+.ea .side { display: flex; flex-direction: column; align-items: flex-end; gap: 4px; padding-left: 24px; }
+.ea .time { font-size: 12px; color: var(--faint); }
 
 /* B. Ledger */
 .lg { --cols: 112px 196px minmax(0, 1fr) 46px 26px; }
@@ -228,6 +267,25 @@ const STYLES = {
         <span class="line trunc"><span class="subj">${esc(r.subject)}</span>${esc(r.preview)}</span>
         ${marks(r)}<span class="date tnum">${shortDate(r.at)}</span></div>`).join(""),
   },
+  senders: {
+    name: "E · Editorial with senders",
+    blurb: "Editorial with sender avatars: a monogram per sender (two stacked for a group thread) beside the headline subject. The header becomes a map of the inbox: one chip per period with its unread count, the chip of the selected conversation lit. ]d and [d jump to the next and previous period (]] and [[ too); clicking a chip jumps there.",
+    list: (rs, sel) => grouped(rs).map(({ p, rows }, g) => {
+      const unread = rows.filter(r => r.unread).length;
+      return `<section class="group" data-sec="${g}"><header class="head"><h2>${p.label}</h2><span class="when">${p.when}</span>
+        <span class="tally">${rows.length} conversation${rows.length > 1 ? "s" : ""}${unread ? ` · <b>${unread} unread</b>` : ""}</span></header>
+        ${rows.map(r => {
+          const others = people(r).filter(n => n !== "me");
+          const shown = others.length ? others.slice(-2).reverse() : ["me"];
+          const more = others.length > 2 ? `<span class="more">+${others.length - 2}</span>` : "";
+          return `<div class="${cls(r, sel)}">
+            <span class="faces${shown.length > 1 ? " many" : ""}">${shown.map(face).join("")}${more}</span>
+            <span style="min-width:0"><div class="subj trunc">${esc(r.subject)}</div>
+              <div class="meta trunc"><span class="from">${esc(r.who)}</span>${r.count > 1 ? `<span class="n">${r.count}</span>` : ""}&ensp;${esc(r.preview)}</div></span>
+            <span class="side"><span class="time tnum">${inPeriodTime(r.at, p)}</span>${marks(r)}</span></div>`;
+        }).join("")}</section>`;
+    }).join(""),
+  },
   editorial: {
     name: "A · Editorial",
     blurb: "A page of headlines. Each period opens with a serif heading, its date and an unread tally. The subject is the largest text on the row; sender and snippet sit beneath it. Fewer rows fit on screen, but each is scanned by its subject.",
@@ -286,32 +344,80 @@ const STYLES = {
 };
 
 const unreadTotal = rows.filter(r => r.unread).length;
+const sections = grouped(rows);
+const sectionOf = id => sections.findIndex(g => g.rows.some(r => r.id === id));
+const CHIP = { today: "Today", yesterday: "Yesterday", week: "This week", month: "This month" };
+const chipLabel = p => CHIP[p.key] || p.label.slice(0, 3);
+
+const plainTop = () => `<div class="top"><b>Inbox</b><span>${unreadTotal} unread</span><i>⌘K</i></div>`;
+const navTop = sel => {
+  const at = sectionOf(sel);
+  return `<div class="top nav"><b>Inbox</b><nav>${sections.map((g, i) => {
+    const unread = g.rows.filter(r => r.unread).length;
+    return `<span class="chip${i === at ? " on" : i < at ? " past" : ""}" data-jump="${i}">${chipLabel(g.p)}${unread ? `<em>${unread}</em>` : ""}</span>`;
+  }).join("")}</nav><span class="keys"><span>⌘K</span></span></div>`;
+};
+const LIST_CLASS = { current: "cur", senders: "ea", editorial: "ed", ledger: "lg", correspondents: "co", timeline: "tl" };
+const HINTS = { senders: "j/k move · ]d/[d next/previous period · ↵ open · e done · / search · ⌘K commands" };
 const app = (style, theme, sel) => `<div class="app ${theme}">
-  <div class="top"><b>Inbox</b><span>${unreadTotal} unread</span><i>⌘K</i></div>
-  <div class="list ${{ current: "cur", editorial: "ed", ledger: "lg", correspondents: "co", timeline: "tl" }[style]}">${STYLES[style].list(rows, sel)}</div>
-  <div class="status"><span>j/k move · ↵ open · e done · # trash · / search · ⌘K commands</span><span>Offline · local replica</span></div></div>`;
+  ${style === "senders" ? navTop(sel) : plainTop()}
+  <div class="list ${LIST_CLASS[style]}">${STYLES[style].list(rows, sel)}</div>
+  <div class="status"><span>${HINTS[style] || "j/k move · ↵ open · e done · # trash · / search · ⌘K commands"}</span><span>Offline · local replica</span></div></div>`;
 
 const params = new URLSearchParams(location.search);
 let sel = 0;
+let pending = null;
 const fit = () => document.querySelectorAll(".frame").forEach(f => {
   f.firstElementChild.style.transform = `scale(${f.clientWidth / 1280})`;
 });
-const render = () => {
+const reveal = (jumped) => document.querySelectorAll(".list").forEach(list => {
+  const sec = jumped && list.querySelector(`[data-sec="${sectionOf(sel)}"]`);
+  const row = list.querySelector(".row.sel");
+  if (sec) { list.scrollTop = sec.offsetTop; return; }
+  if (!row) return;
+  const top = row.offsetTop, bottom = top + row.offsetHeight;
+  if (top < list.scrollTop + 8) list.scrollTop = Math.max(0, top - 60);
+  else if (bottom > list.scrollTop + list.clientHeight - 8) list.scrollTop = bottom - list.clientHeight + 24;
+});
+const render = (jumped = false) => {
+  const scrolls = [...document.querySelectorAll(".list")].map(l => l.scrollTop);
   if (params.get("style")) {
     document.body.className = "single";
     document.body.innerHTML = app(params.get("style"), params.get("theme") || "dark", sel);
-    return;
+  } else {
+    document.body.innerHTML = `<main class="gallery"><header><h1>Conversation list: six layouts</h1>
+      <p>Fixture inbox, as of Sat 7 Nov 2026, 12:42 · dark and light side by side · j/k moves the selection in every frame, ]d / [d jump between periods</p></header>
+      ${Object.entries(STYLES).map(([key, s]) => `<section class="option"><h2>${s.name}</h2><p>${s.blurb}</p>
+        <div class="pair"><div class="frame">${app(key, "dark", sel)}</div><div class="frame">${app(key, "light", sel)}</div></div></section>`).join("")}</main>`;
+    fit();
   }
-  document.body.innerHTML = `<main class="gallery"><header><h1>Conversation list: five layouts</h1>
-    <p>Fixture inbox, as of Sat 7 Nov 2026, 12:42 · dark and light side by side · j/k moves the selection in every frame</p></header>
-    ${Object.entries(STYLES).map(([key, s]) => `<section class="option"><h2>${s.name}</h2><p>${s.blurb}</p>
-      <div class="pair"><div class="frame">${app(key, "dark", sel)}</div><div class="frame">${app(key, "light", sel)}</div></div></section>`).join("")}</main>`;
-  fit();
+  document.querySelectorAll(".list").forEach((l, i) => { l.scrollTop = scrolls[i] || 0; });
+  reveal(jumped);
+};
+const jumpTo = i => {
+  sel = sections[Math.max(0, Math.min(sections.length - 1, i))].rows[0].id;
+  render(true);
+};
+const jumpSection = dir => {
+  const at = sectionOf(sel);
+  const atStart = sections[at].rows[0].id === sel;
+  jumpTo(dir > 0 ? at + 1 : atStart ? at - 1 : at);
 };
 addEventListener("resize", fit);
+addEventListener("click", e => {
+  const chip = e.target.closest("[data-jump]");
+  if (chip) jumpTo(Number(chip.dataset.jump));
+});
 addEventListener("keydown", e => {
+  if (pending) {
+    const bracket = pending;
+    pending = null;
+    if (e.key === "d" || e.key === bracket) { e.preventDefault(); jumpSection(bracket === "]" ? 1 : -1); }
+    return;
+  }
+  if (e.key === "]" || e.key === "[") { pending = e.key; return; }
   const d = { j: 1, ArrowDown: 1, k: -1, ArrowUp: -1 }[e.key];
-  if (d) { sel = Math.max(0, Math.min(rows.length - 1, sel + d)); render(); }
+  if (d) { e.preventDefault(); sel = Math.max(0, Math.min(rows.length - 1, sel + d)); render(); }
 });
 document.fonts.ready.then(fit);
 render();
