@@ -1,0 +1,8 @@
+[package]
+name = "schlau-search"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+description = "Query language, typo-tolerant term correction and hybrid ranking for schlau."
+
+[dependencies]

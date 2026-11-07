@@ -1,0 +1,6 @@
+/target
+*.sqlite
+*.sqlite-wal
+*.sqlite-shm
+.env
+.DS_Store
