@@ -46,7 +46,7 @@ pub fn thread_view(t: &OpenThread, k: &Kit, dark: bool) -> El {
         .w_full()
         .pb(8.0)
         .gap(4.0)
-        .child(text(subject.to_string()).font(title).color(k.c.text_base).selectable(true).wrap().w_full())
+        .child(text(subject.to_string()).font(title).color(k.c.text_base).selectable(true).selection_color(k.selection()).wrap().w_full())
         .child(
             text(format!("{} message{}", t.messages.len(), if t.messages.len() == 1 { "" } else { "s" }))
                 .font(k.ty.small)
@@ -108,7 +108,7 @@ fn message_card(m: &MessageView, body: Option<&Rendered>, expanded: bool, focuse
         None => card.child(
             col()
                 .gap(6.0)
-                .child(text(m.preview.clone()).font(k.ty.body.lh(21.0)).color(k.c.text_base).selectable(true).wrap_anywhere().w_full())
+                .child(text(m.preview.clone()).font(k.ty.body.lh(21.0)).color(k.c.text_base).selectable(true).selection_color(k.selection()).wrap_anywhere().w_full())
                 .child(text("Loading the full message…").font(k.ty.small).color(k.c.text_faint)),
         ),
     }

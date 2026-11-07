@@ -120,10 +120,15 @@ fn lookup_prefers_words() {
     let vectors = corpus(&[sem(1, 0.5)]);
     let hits = fuse(&q, &[lex(2, -3.0, 1.0)], Meaning::All(&vectors), NOW, 10);
     assert_eq!(hits[0].doc, 2);
-    let q = parse("summer holidays", NOW);
+}
+
+#[test]
+fn every_word_outranks_meaning_alone_however_strong() {
+    let q = parse("tesla", NOW);
     assert!(!is_lookup(&q));
+    let vectors = corpus(&[sem(1, 0.9)]);
     let hits = fuse(&q, &[lex(2, -3.0, 1.0)], Meaning::All(&vectors), NOW, 10);
-    assert_eq!(hits[0].doc, 1);
+    assert_eq!(ids(&hits), [2, 1], "the meaning hit still shows, below");
 }
 
 #[test]

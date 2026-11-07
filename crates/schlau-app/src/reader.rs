@@ -85,6 +85,7 @@ pub fn body_view(rendered: &Rendered, k: &Kit, accent: Color) -> El {
         .w_full()
         .min_w(0.0)
         .gap(12.0)
+        .selection_group(true)
         .children(note)
         .children(rendered.blocks.iter().map(|b| block(b, k, accent, 0)))
         .children((!rendered.attachments.is_empty()).then(|| attachments(&rendered.attachments, k)))
@@ -157,7 +158,7 @@ fn paragraph(inlines: &[Inline], style: TextStyle, k: &Kit, accent: Color) -> El
             Inline::LineBreak => content.push('\n'),
         }
     }
-    let el = rich(content, spans).font(style).color(k.c.text_base).selectable(true).wrap_anywhere().w_full();
+    let el = rich(content, spans).font(style).color(k.c.text_base).selectable(true).selection_color(k.selection()).wrap_anywhere().w_full();
     links
         .into_iter()
         .fold(el, El::link)
@@ -211,6 +212,6 @@ fn block(b: &Block, k: &Kit, accent: Color, depth: usize) -> El {
             .padding(10.0)
             .radius(6.0)
             .fill(k.c.layer_02)
-            .child(text(code.clone()).font(k.ty.mono).color(k.c.text_base).selectable(true).wrap_anywhere().w_full()),
+            .child(text(code.clone()).font(k.ty.mono).color(k.c.text_base).selectable(true).selection_color(k.selection()).wrap_anywhere().w_full()),
     }
 }

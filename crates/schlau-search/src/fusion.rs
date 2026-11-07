@@ -151,6 +151,9 @@ pub struct FusionOptions {
     pub recency_weight: f64,
     /// Days for the recency bonus to halve.
     pub recency_half_life_days: f64,
+    /// The most a meaning score can add: below a full word match (`word_weight` plus the bonuses), so a
+    /// document found only by meaning never outranks one that holds the words.
+    pub meaning_cap: f64,
 }
 
 impl Default for FusionOptions {
@@ -163,6 +166,7 @@ impl Default for FusionOptions {
             field_bonus: 0.25,
             recency_weight: 0.15,
             recency_half_life_days: 30.0,
+            meaning_cap: 1.8,
         }
     }
 }
@@ -272,7 +276,7 @@ pub fn fuse_with(
                     + options.bm25_weight * rel_bm25
                     + field
             });
-            let score = meaning_weight * d.z.unwrap_or(0.0).max(0.0)
+            let score = meaning_weight * meaning_score(d.z, options)
                 + words
                 + recency(now_unix, d.received_at, options);
             Some((
@@ -295,6 +299,13 @@ pub fn fuse_with(
     });
     hits.truncate(limit);
     hits.into_iter().map(|(h, _)| h).collect()
+}
+
+/// A z-score as a bounded score: 0 at the gate's half, rising quickly over the gate and leveling off
+/// towards `meaning_cap`, so standing out matters but standing out a lot can't swamp the words.
+fn meaning_score(z: Option<f64>, options: &FusionOptions) -> f64 {
+    let z = z.unwrap_or(0.0).max(0.0);
+    options.meaning_cap * (1.0 - (-z / options.z_gate.max(f64::EPSILON)).exp())
 }
 
 /// The recency tie-breaker: `recency_weight * 0.5^(age_days / recency_half_life_days)`; messages from the

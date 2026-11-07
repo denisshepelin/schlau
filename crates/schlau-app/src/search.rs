@@ -218,3 +218,36 @@ mod tests {
         eprintln!("{} keystrokes: p50 {:.1} ms, p90 {:.1} ms, p99 {:.1} ms, max {:.1} ms", times.len(), at(0.5), at(0.9), at(0.99), at(1.0));
     }
 }
+
+#[cfg(test)]
+mod explain {
+    use super::*;
+
+    /// Prints the top results of `SCHLAU_EXPLAIN` against `SCHLAU_TEST_DB`, with the image model when it is
+    /// downloaded: `SCHLAU_TEST_DB=… SCHLAU_EXPLAIN=tesla cargo test --release -p schlau-app explain -- --ignored --nocapture`.
+    #[test]
+    #[ignore = "needs SCHLAU_TEST_DB and SCHLAU_EXPLAIN"]
+    fn explain() {
+        let path = PathBuf::from(std::env::var("SCHLAU_TEST_DB").unwrap());
+        let query = std::env::var("SCHLAU_EXPLAIN").unwrap();
+        let models = PathBuf::from(std::env::var("HOME").unwrap()).join("Library/Application Support/schlau/models");
+        let media = schlau_embed::ModelStore::local(&models, &schlau_embed::EMBEDDINGGEMMA_2)
+            .and_then(|p| schlau_embed::GemmaEmbedder::load(&p.dir, schlau_embed::Towers::Text).ok())
+            .map(|m| Arc::new(m) as Arc<dyn MediaEmbedder>);
+        let now = crate::format::now_unix();
+        let parsed = parse_in_zone(&query, now, utc_offset());
+        let request = SearchRequest { path, query: query.clone(), version: 1, embedder: None, media };
+        with_cache(&request, |cache| {
+            let media = match (&request.media, &cache.media_vectors) {
+                (Some(e), Some(v)) => top_hits(v, e.embed_query(&query).ok()),
+                _ => None,
+            };
+            let channels = media.iter().map(|(top, scale)| MeaningChannel { scale: *scale, top, attachments: true }).collect();
+            let hits = cache.reader.search(&parsed, &cache.vocabulary, Some(MeaningInput { channels }), now, 8).unwrap();
+            hits.iter().for_each(|h| {
+                let subject: String = h.row.subject.chars().take(48).collect();
+                eprintln!("{:6.2} {:?} {subject:<48} {}", h.score, h.why, h.attachment.clone().unwrap_or_default());
+            });
+        });
+    }
+}
