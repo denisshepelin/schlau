@@ -1,5 +1,6 @@
 mod list;
 mod overlay;
+mod screener;
 mod settings;
 mod thread;
 
@@ -11,6 +12,7 @@ use crate::state::Ui;
 use crate::theme;
 
 pub use list::row_key;
+pub use screener::setup_row_key;
 pub use settings::row_key as settings_row_key;
 
 pub fn view(s: &Ui, cx: &mut Cx<Ui>) -> El {
@@ -37,6 +39,8 @@ fn main_view(s: &Ui, thread: &Option<crate::state::OpenThread>, web: &Option<Str
     match (thread, web) {
         (Some(t), Some(id)) => thread::web_view(t, id, k),
         (Some(t), None) => thread::thread_view(t, &s.remote_images, k, dark),
+        (None, _) if s.screener_setup.is_some() => screener::setup_view(s, k, dark),
+        (None, _) if s.screener.is_some() => screener::screener_view(s, k, dark),
         (None, _) => list::thread_list(s, k, dark),
     }
 }
@@ -83,8 +87,35 @@ fn period_strip(s: &Ui, k: &Kit, dark: bool) -> El {
 }
 
 fn top_bar(s: &Ui, k: &Kit, dark: bool) -> El {
-    let name = s.current_mailbox().map(|m| m.name.clone()).unwrap_or_else(|| "schlau".into());
+    let screening = s.thread.is_none() && s.settings_pane.is_none() && (s.screener.is_some() || s.screener_setup.is_some());
+    let name = match (screening, s.screener_setup.is_some()) {
+        (true, true) => "Screener setup".to_string(),
+        (true, false) => "Screener".to_string(),
+        (false, _) => s.current_mailbox().map(|m| m.name.clone()).unwrap_or_else(|| "schlau".into()),
+    };
     let title = text(name).font(rune::TextStyle { size: 15.0, weight: 650.0, ..k.ty.body }).color(k.c.text_base);
+    if screening {
+        let count = s.screener.as_ref().map(|x| {
+            let messages: usize = x.senders.iter().map(|x| x.message_ids.len()).sum();
+            match (x.senders.len(), x.marked.len()) {
+                (n, 0) => format!("{n} sender{} · {messages} messages", if n == 1 { "" } else { "s" }),
+                (n, m) => format!("{n} senders · {m} marked"),
+            }
+        });
+        return row()
+            .key("top-bar")
+            .w_full()
+            .h(52.0)
+            .pl(86.0)
+            .pr(18.0)
+            .gap(12.0)
+            .center_y()
+            .window_drag()
+            .child(title)
+            .child(text(count.unwrap_or_default()).font(k.ty.small).color(k.c.text_faint))
+            .child(spacer())
+            .child(text("⌘K").font(k.ty.small).color(k.c.text_faint));
+    }
     if s.thread.is_none() && s.settings_pane.is_none() && !s.rows.is_empty() {
         return row()
             .key("top-bar")
@@ -134,6 +165,10 @@ fn status_bar(s: &Ui, k: &Kit) -> El {
         "j/k move · h/l change · ↵ edit · esc close"
     } else if s.thread.is_some() {
         "j/k scroll · ⇧J/⇧K next · n/p message · e done · u back · ⌘K commands"
+    } else if s.screener_setup.is_some() {
+        "j/k move · ↵ do · c copy · o open Fastmail rules · d remove folder · esc close"
+    } else if s.screener.is_some() {
+        "j/k move · y let in · 1–9 file · ! spam · x mark · ⇧A accept suggested · ↵ open · z undo · esc close"
     } else {
         "j/k move · ]d/[d next/previous period · ↵ open · e done · / search · ⌘K commands"
     };

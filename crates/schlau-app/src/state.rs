@@ -59,6 +59,10 @@ pub struct Ui {
     pub preview_files: Latest<crate::preview::Files>,
     pub settings: crate::settings::SettingsFile,
     pub settings_pane: Option<crate::settings_pane::SettingsPane>,
+    /// The screener over the screened folder, when open.
+    pub screener: Option<crate::screener::Screener>,
+    /// The screener's setup page, when open.
+    pub screener_setup: Option<crate::screener::ScreenerSetup>,
     /// Decodes attachment pictures off the main thread; made once the window has a waker.
     pub images: Option<rune::ImageCache>,
     /// Remote pictures in message bodies, loaded when asked for.
@@ -96,8 +100,35 @@ pub struct OpenThread {
 pub struct Palette {
     pub query: TextEdit,
     pub picked: usize,
-    /// Lists every folder instead of commands: the folder switcher.
-    pub folders: bool,
+    pub purpose: PalettePurpose,
+}
+
+/// What the palette lists and what picking an entry does.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum PalettePurpose {
+    /// Commands and folders to go to.
+    Commands,
+    /// Every folder, to go to: the folder switcher.
+    Folders,
+    /// Every folder, to add as a screener destination.
+    Destination,
+    /// Every folder, to screen new senders in.
+    Triage,
+}
+
+impl PalettePurpose {
+    pub fn lists_folders(self) -> bool {
+        self != PalettePurpose::Commands
+    }
+
+    pub fn placeholder(self) -> &'static str {
+        match self {
+            PalettePurpose::Commands => "Type a command or folder",
+            PalettePurpose::Folders => "Go to folder",
+            PalettePurpose::Destination => "Folder to file screened senders in",
+            PalettePurpose::Triage => "Folder new senders land in",
+        }
+    }
 }
 
 pub struct Search {
@@ -148,6 +179,8 @@ impl Ui {
             preview_files: Latest::default(),
             settings: crate::settings::SettingsFile::transient(),
             settings_pane: None,
+            screener: None,
+            screener_setup: None,
             images: None,
             remote_images: Default::default(),
             blobs: None,
@@ -179,6 +212,8 @@ impl Ui {
     }
 
     pub fn show_mailbox(&mut self, id: &str) {
+        self.screener = None;
+        self.screener_setup = None;
         self.mailbox_id = id.to_string();
         self.thread = None;
         self.selected = 0;
@@ -220,6 +255,7 @@ impl Ui {
         if let Some(thread_id) = self.thread.as_ref().map(|t| t.thread_id.clone()) {
             self.refresh_thread(&thread_id);
         }
+        crate::screener::reload(self);
     }
 
     pub fn selected_row(&self) -> Option<&ThreadRow> {
@@ -379,12 +415,25 @@ impl Ui {
 
     /// Sends actions to the engine. With `undoable`, their inverse goes on the undo stack.
     pub fn perform(&mut self, actions: Vec<Action>, undoable: bool) {
-        if undoable {
-            self.undo.push(actions.iter().rev().map(inverse).collect());
-            if self.undo.len() > 50 {
-                self.undo.remove(0);
+        match undoable {
+            true => {
+                let undo = actions.iter().rev().map(inverse).collect();
+                self.perform_with_undo(actions, undo);
             }
+            false => self.send_actions(actions),
         }
+    }
+
+    /// Sends actions to the engine, with `undo` (in the order to run) on the undo stack.
+    pub fn perform_with_undo(&mut self, actions: Vec<Action>, undo: Vec<Action>) {
+        self.undo.push(undo);
+        if self.undo.len() > 50 {
+            self.undo.remove(0);
+        }
+        self.send_actions(actions);
+    }
+
+    fn send_actions(&self, actions: Vec<Action>) {
         if let Some(engine) = &self.engine {
             actions.into_iter().for_each(|a| engine.send(Command::Perform(a)));
         }
@@ -506,7 +555,7 @@ impl Ui {
 }
 
 /// The action that undoes `action`. Destroy can't be undone; it is never queued as undoable.
-fn inverse(action: &Action) -> Action {
+pub fn inverse(action: &Action) -> Action {
     match action {
         Action::SetFlag { message_ids, flag, on } => {
             Action::SetFlag { message_ids: message_ids.clone(), flag: flag.clone(), on: !on }
@@ -524,5 +573,15 @@ fn inverse(action: &Action) -> Action {
             Action::AddMailbox { message_ids: message_ids.clone(), mailbox_id: mailbox_id.clone() }
         }
         Action::Destroy { message_ids } => Action::Destroy { message_ids: message_ids.clone() },
+        Action::AddToGroup { group_id, email, name, uid } => Action::RemoveFromGroup {
+            group_id: group_id.clone(),
+            email: email.clone(),
+            name: name.clone(),
+            uid: uid.clone(),
+            delete_card: false,
+        },
+        Action::RemoveFromGroup { group_id, email, name, uid, .. } => {
+            Action::AddToGroup { group_id: group_id.clone(), email: email.clone(), name: name.clone(), uid: uid.clone() }
+        }
     }
 }

@@ -50,6 +50,7 @@ The icon is `assets/icon/schlau.icns`, made from the artwork in `assets/icon/sch
 | `↵`, `o`, `l` or `→` | Open |
 | `esc`, `u`, `h` or `←` | Back |
 | `g f` or `g l` | Go to folder (fuzzy, every folder with its unread count) |
+| `g s` | Screener: decide on new senders (see below) |
 | `⌘,` | Settings |
 | `space` | Quick look at the message's attachments (`←`/`→` between them, `↵` opens in the default app, `space` closes) |
 | `e` | Done (archive) |
@@ -104,6 +105,25 @@ without saving, and points attachment search at it.
   "preview": "schlau"
 }
 ```
+
+## Screener
+
+New mail from strangers waits in one folder (Triage) until you decide on the sender: let them in (`y`: Inbox,
+marked read), file them (`1`–`9`: a folder of your choice), or send them to hell (`!`: spam). `g s` opens the
+screener, one row per sender; `x` marks several for one decision, `⇧A` accepts every suggestion, `↵` reads the
+newest message, `z` undoes.
+
+Fastmail doesn't let an API token create rules, so decisions are kept in Fastmail contact groups (`Screener · Inbox`,
+`Screener · Receipts`, `Screener · Out`, …), and a few rules you add once on fastmail.com route on them. The
+"Screener setup" page (in the `⌘K` palette) makes the folder and the groups, then lists each rule field by field:
+
+- one rule per folder and spam: the sender is a member of the contact group → move to its folder, stop;
+- last, everyone else: From → Sender is not a contact → move to Triage.
+
+The API token needs Contacts access (check with `cargo run -p schlau-jmap --example capabilities`). Senders are
+matched by exact address; a filed sender becomes a contact. schlau watches where new mail from group members lands,
+marks each rule as working or missed on the setup page, and moves what a missing rule left in Triage or the Inbox
+while it runs.
 
 ## Quick look
 

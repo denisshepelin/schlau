@@ -12,7 +12,10 @@ pub fn spawn(connect: Connect, commands: Sender<Command>) {
         let mut backoff = Duration::from_secs(2);
         let mut last_event_id: Option<String> = None;
         loop {
-            let stream = connect().and_then(|client| client.event_source("Email,Mailbox", 30, last_event_id.as_deref()));
+            let stream = connect().and_then(|client| {
+                let types = if client.has_contacts() { "Email,Mailbox,ContactCard" } else { "Email,Mailbox" };
+                client.event_source(types, 30, last_event_id.as_deref())
+            });
             match stream {
                 Ok(mut stream) => {
                     backoff = Duration::from_secs(2);

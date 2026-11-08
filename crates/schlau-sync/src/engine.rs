@@ -13,6 +13,7 @@ use crate::settings::{SearchSettings, TextProvider};
 use crate::push;
 use crate::semantic::{self, SharedEmbedder};
 use crate::remote::{DynClient, Remote};
+use crate::screener::{self, ScreenerConfig, SetupRequest};
 
 /// Makes a connected client. The engine calls it on its own thread, so connecting never blocks
 /// the UI, and again after a failure.
@@ -29,6 +30,10 @@ pub enum Command {
     Refresh,
     /// Search with these models from now on: downloads what is missing and indexes with it.
     Configure(SearchSettings),
+    /// Screen with this folder and these destinations from now on.
+    Screener(ScreenerConfig),
+    /// Make the screened folder and contact groups that don't exist yet.
+    SetupScreener(SetupRequest),
     Shutdown,
 }
 
@@ -124,6 +129,7 @@ pub struct Engine {
     search: Option<Search>,
     attachments: Option<AttachmentWorker>,
     kick: Option<Sender<Signal>>,
+    screener: ScreenerConfig,
 }
 
 /// The models search uses, and where they live.
@@ -158,13 +164,20 @@ struct Pending {
     /// Load (and download if needed) the text model the settings name.
     load_model: bool,
     embed: bool,
+    setup: Option<SetupRequest>,
 }
 
 const IDLE_SYNC: Duration = Duration::from_secs(300);
 
 impl Engine {
     pub fn new(store: Store, notify: Notify) -> Engine {
-        Engine { store, notify, connect: None, search: None, attachments: None, kick: None }
+        Engine { store, notify, connect: None, search: None, attachments: None, kick: None, screener: ScreenerConfig::default() }
+    }
+
+    /// Screens with this folder and these destinations; `Command::Screener` changes them.
+    pub fn with_screener(mut self, config: ScreenerConfig) -> Engine {
+        self.screener = config;
+        self
     }
 
     /// Indexes for meaning search with the models `search.settings` names; `Command::Configure` changes them.
@@ -296,12 +309,27 @@ impl Engine {
             self.notify.changed();
             return Ok(());
         }
+        if let Some(request) = pending.setup.take() {
+            remote.setup_screener(&mut self.store, &request)?;
+            self.notify.changed();
+            pending.sync = true;
+            return Ok(());
+        }
         if pending.sync {
             pending.sync = false;
             remote.replay_outbox(&mut self.store)?;
             let mut changed = remote.sync_mailboxes(&mut self.store)?;
+            match remote.sync_contacts(&mut self.store) {
+                Ok(contacts) => changed |= contacts,
+                Err(e) => self.notify.set_background(Some(format!("Contacts not synced: {e}"))),
+            }
             changed |= remote.start_emails(&mut self.store)?;
-            changed |= remote.sync_emails(&mut self.store)?;
+            let mut created = Vec::new();
+            changed |= remote.sync_emails_collecting(&mut self.store, &mut created)?;
+            if screener::after_sync(&mut self.store, &self.screener, &created)? > 0 {
+                changed = true;
+                pending.sync = true;
+            }
             if changed {
                 self.notify.changed();
             }
@@ -420,6 +448,16 @@ impl Engine {
                 pending.sync = true;
             }
             Command::FetchBodies(ids) => pending.bodies.extend(ids),
+            Command::Screener(config) => {
+                self.screener = config;
+                pending.sync = true;
+            }
+            Command::SetupScreener(request) => {
+                pending.setup = Some(match pending.setup.take() {
+                    Some(earlier) => earlier.merge(request),
+                    None => request,
+                })
+            }
             Command::Refresh => pending.sync = true,
             Command::Configure(settings) => {
                 let Some(search) = self.search.as_mut() else { return };
@@ -461,7 +499,7 @@ impl Engine {
 
 impl Pending {
     fn has_work(&self) -> bool {
-        self.sync || !self.bodies.is_empty() || self.backfill || self.background_bodies || self.has_local_work()
+        self.sync || self.setup.is_some() || !self.bodies.is_empty() || self.backfill || self.background_bodies || self.has_local_work()
     }
 
     fn has_local_work(&self) -> bool {

@@ -8,6 +8,7 @@ mod fixtures;
 mod index;
 mod push;
 mod remote;
+mod screener;
 mod semantic;
 mod settings;
 
@@ -24,5 +25,7 @@ pub use engine::Status;
 pub use remote::DynClient;
 pub use remote::Remote;
 pub use remote::SyncError;
+pub use remote::{CONTACTS_AVAILABLE, new_uuid};
+pub use screener::{Destination, DestinationKind, Route, ScreenerConfig, SetupRequest, group_name, route_actions};
 pub use semantic::SharedEmbedder;
 pub use settings::{AttachmentMeaning, SearchSettings, Server, TextMeaning, TextProvider};

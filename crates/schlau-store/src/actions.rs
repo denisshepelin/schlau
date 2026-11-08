@@ -47,6 +47,8 @@ impl WriteTx<'_> {
             Action::Destroy { message_ids } => {
                 message_ids.iter().try_for_each(|id| self.delete_message(id).map(|_| ()))
             }
+            Action::AddToGroup { group_id, email, name, uid } => self.add_to_group(group_id, email, name, uid),
+            Action::RemoveFromGroup { group_id, email, .. } => self.remove_from_group(group_id, email),
         }
     }
 

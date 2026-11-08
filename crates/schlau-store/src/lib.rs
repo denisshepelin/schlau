@@ -3,6 +3,7 @@
 
 mod actions;
 mod attachments;
+mod contacts;
 mod fts;
 mod model;
 mod read;
@@ -23,6 +24,11 @@ pub use model::Address;
 pub use model::Addresses;
 pub use model::Attachment;
 pub use model::Body;
+pub use model::ContactGroup;
+pub use model::ContactRecord;
+pub use model::Misrouted;
+pub use model::RoutingStats;
+pub use model::ScreenerSender;
 pub use model::BodyIndex;
 pub use model::Flags;
 pub use model::Mailbox;

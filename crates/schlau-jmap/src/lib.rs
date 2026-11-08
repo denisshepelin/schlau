@@ -6,6 +6,7 @@
 //! helpers a sync engine needs. Push events come from [`Client::event_source`].
 
 mod client;
+mod contact;
 mod email;
 mod email_filter;
 mod error;
@@ -29,6 +30,10 @@ pub mod mock;
 mod mail_tests;
 
 pub use client::{Client, UploadResponse};
+pub use contact::{
+    AddressBook, ContactCard, ContactEmail, ContactName, NameComponent, group_card, individual_card,
+    member_patch, require_success,
+};
 pub use email::{
     Email, EmailAddress, EmailBodyPart, EmailBodyValue, EmailCreate, EmailGetArgs, EmailHeader,
     EmailQueryArgs, keyword, property as email_property,

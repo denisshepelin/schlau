@@ -205,6 +205,12 @@ pub enum Action {
     AddMailbox { message_ids: Vec<String>, mailbox_id: String },
     RemoveMailbox { message_ids: Vec<String>, mailbox_id: String },
     Destroy { message_ids: Vec<String> },
+    /// Adds the card holding `email` to a contact group, making the card (with `uid`) when there is
+    /// none.
+    AddToGroup { group_id: String, email: String, name: String, uid: String },
+    /// Takes the cards holding `email` out of a group. With `delete_card`, the server also deletes
+    /// the card `uid` when that leaves it in no group: the card the matching `AddToGroup` made.
+    RemoveFromGroup { group_id: String, email: String, name: String, uid: String, delete_card: bool },
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -212,4 +218,60 @@ pub struct OutboxItem {
     pub id: i64,
     pub action: Action,
     pub attempts: i64,
+}
+
+/// A contact card as the replica keeps it: emails lowercased, group members by `uid`.
+#[derive(Debug, Clone, PartialEq, Eq, Default)]
+pub struct ContactRecord {
+    pub id: String,
+    pub uid: String,
+    pub kind: String,
+    pub name: String,
+    pub emails: Vec<String>,
+    pub members: Vec<String>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct ContactGroup {
+    pub id: String,
+    pub name: String,
+    pub members: i64,
+}
+
+/// Everything one sender has in the screened folder, and what the replica knows about them.
+#[derive(Debug, Clone, PartialEq, Default)]
+pub struct ScreenerSender {
+    /// Lowercased.
+    pub email: String,
+    pub name: String,
+    /// Their messages in the folder, newest first.
+    pub message_ids: Vec<String>,
+    pub unread: i64,
+    pub latest_at: i64,
+    pub latest_subject: String,
+    pub latest_thread: String,
+    /// The address is on a contact card.
+    pub contact: bool,
+    /// Something in Sent was addressed to them.
+    pub replied: bool,
+    /// Their messages elsewhere: mailbox id and count, most first.
+    pub elsewhere: Vec<(String, i64)>,
+    /// Groups holding other addresses at the same domain: group id and how many, most first.
+    pub domain_groups: Vec<(String, i64)>,
+}
+
+/// A message to move because its sender's group says where it belongs.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct Misrouted {
+    pub message_id: String,
+    pub mailbox_id: String,
+    pub group_id: String,
+}
+
+/// What the account's rules did with new mail from a group's members.
+#[derive(Debug, Clone, PartialEq, Eq, Default)]
+pub struct RoutingStats {
+    pub routed: i64,
+    pub missed: i64,
+    pub last_missed_at: Option<i64>,
 }

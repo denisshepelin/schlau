@@ -7,7 +7,7 @@ use rune::{Key, KeyEvent, TextEdit, Tx};
 use schlau_store::Action;
 use schlau_sync::Command as EngineCommand;
 
-use crate::state::{Palette, Search, Ui};
+use crate::state::{Palette, PalettePurpose, Search, Ui};
 
 pub struct Command {
     pub id: &'static str,
@@ -38,6 +38,8 @@ pub const COMMANDS: &[Command] = &[
     Command { id: "back", title: "Back", keys: &["escape", "u", "h"], run: back },
     Command { id: "settings", title: "Settings", keys: &["mod+,"], run: |s, _| crate::settings_pane::toggle(s) },
     Command { id: "folders", title: "Go to folder…", keys: &["g f", "g l"], run: open_folders },
+    Command { id: "screener", title: "Screener: decide on new senders", keys: &["g s"], run: |s, _| crate::screener::open(s) },
+    Command { id: "screener-setup", title: "Screener setup: folder, destinations and Fastmail rules", keys: &[], run: |s, _| crate::screener::open_setup(s) },
     Command { id: "quick-look", title: "Quick look attachments", keys: &["space"], run: quick_look },
     Command { id: "archive", title: "Mark done (archive)", keys: &["e"], run: archive },
     Command { id: "trash", title: "Move to trash", keys: &["#"], run: trash },
@@ -135,7 +137,7 @@ fn unread_hint(m: &schlau_store::Mailbox) -> String {
 
 /// Palette entries: a title and a hint (the keys of a command, the unread count of a folder).
 pub fn palette_entries(s: &Ui) -> Vec<(Entry, String, String)> {
-    if s.palette.as_ref().is_some_and(|p| p.folders) {
+    if s.palette.as_ref().is_some_and(|p| p.purpose.lists_folders()) {
         return s.mailboxes.iter().map(|m| (Entry::Mailbox(m.id.clone()), folder_path(s, m), unread_hint(m))).collect();
     }
     let commands = COMMANDS
@@ -149,24 +151,28 @@ pub fn palette_entries(s: &Ui) -> Vec<(Entry, String, String)> {
 }
 
 pub fn run_entry(s: &mut Ui, entry: &Entry, tx: &mut Tx) {
-    s.palette = None;
-    match entry {
-        Entry::Command(i) => (COMMANDS[*i].run)(s, tx),
-        Entry::Mailbox(id) => s.show_mailbox(id),
+    let purpose = s.palette.take().map_or(PalettePurpose::Commands, |p| p.purpose);
+    match (entry, purpose) {
+        (Entry::Command(i), _) => (COMMANDS[*i].run)(s, tx),
+        (Entry::Mailbox(id), PalettePurpose::Destination) => crate::screener::add_destination(s, id),
+        (Entry::Mailbox(id), PalettePurpose::Triage) => crate::screener::set_triage(s, id),
+        (Entry::Mailbox(id), PalettePurpose::Commands | PalettePurpose::Folders) => s.show_mailbox(id),
     }
 }
 
-fn open_palette(s: &mut Ui, _: &mut Tx) {
+/// Opens the palette for `purpose`, with an empty query.
+pub fn open_palette_for(s: &mut Ui, purpose: PalettePurpose) {
     let mut query = TextEdit::new("");
     query.focused = true;
-    s.palette = Some(Palette { query, picked: 0, folders: false });
+    s.palette = Some(Palette { query, picked: 0, purpose });
 }
 
+fn open_palette(s: &mut Ui, _: &mut Tx) {
+    open_palette_for(s, PalettePurpose::Commands);
+}
 
 fn open_folders(s: &mut Ui, _: &mut Tx) {
-    let mut query = TextEdit::new("");
-    query.focused = true;
-    s.palette = Some(Palette { query, picked: 0, folders: true });
+    open_palette_for(s, PalettePurpose::Folders);
 }
 
 /// Quick look at the focused message's attachments, or the nearest earlier message's that has some.

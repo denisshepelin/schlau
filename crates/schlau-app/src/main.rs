@@ -7,6 +7,7 @@ mod preview;
 mod quicklook;
 mod rank;
 mod reader;
+mod screener;
 mod remote_images;
 mod search;
 mod settings;
@@ -120,7 +121,7 @@ fn setup(s: &mut Ui, waker: Waker) {
         text: s.embedder.clone(),
         media: s.media.clone(),
     };
-    let engine = Engine::new(store, notify.clone()).with_search(search);
+    let engine = Engine::new(store, notify.clone()).with_search(search).with_screener(s.settings.effective().screener);
     let engine = match s.pending_connect.take() {
         Some(connect) => engine.with_remote(connect),
         None => engine,
@@ -219,6 +220,12 @@ fn on_key(s: &mut Ui, ev: &KeyEvent, tx: &mut Tx) -> bool {
     }
     if s.settings_pane.is_some() {
         return settings_pane::on_key(s, ev, tx);
+    }
+    if s.thread.is_none() && s.screener_setup.is_some() {
+        return screener::on_setup_key(s, ev, tx);
+    }
+    if s.thread.is_none() && s.screener.is_some() {
+        return screener::on_key(s, ev, tx);
     }
     let before = (s.selected, s.thread.as_ref().map(|t| t.thread_id.clone()));
     let handled = commands::dispatch(s, ev, tx);

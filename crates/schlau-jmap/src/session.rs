@@ -10,6 +10,7 @@ pub mod capability {
     pub const CORE: &str = "urn:ietf:params:jmap:core";
     pub const MAIL: &str = "urn:ietf:params:jmap:mail";
     pub const SUBMISSION: &str = "urn:ietf:params:jmap:submission";
+    pub const CONTACTS: &str = "urn:ietf:params:jmap:contacts";
 }
 
 pub const FASTMAIL_SESSION_URL: &str = "https://api.fastmail.com/jmap/session";

@@ -5,7 +5,7 @@
 use std::path::{Path, PathBuf};
 
 use schlau_search::{LastWord, Typos};
-use schlau_sync::{AttachmentMeaning, SearchSettings, Server, TextMeaning};
+use schlau_sync::{AttachmentMeaning, ScreenerConfig, SearchSettings, Server, TextMeaning};
 use serde::{Deserialize, Serialize};
 
 /// Which viewer `space` opens for attachments.
@@ -43,6 +43,8 @@ pub struct Settings {
     pub search: SearchSettings,
     #[serde(alias = "previewer")]
     pub preview: Previewer,
+    /// The screened folder and where screened senders go.
+    pub screener: ScreenerConfig,
 }
 
 /// A group of settings on the settings pane.
@@ -275,6 +277,12 @@ impl SettingsFile {
         let model = Some(model.trim()).filter(|m| !m.is_empty()).unwrap_or("embeddinggemma-2");
         self.stored.search.server =
             Some(url.trim()).filter(|u| !u.is_empty()).map(|url| Server { url: url.to_string(), model: model.to_string(), key });
+        self.save()
+    }
+
+    /// Replaces the screener's setup and writes the file.
+    pub fn set_screener(&mut self, config: ScreenerConfig) -> std::io::Result<()> {
+        self.stored.screener = config;
         self.save()
     }
 

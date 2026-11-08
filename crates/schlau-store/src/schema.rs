@@ -18,7 +18,7 @@ pub(crate) fn configure(conn: &Connection) -> Result<()> {
     Ok(())
 }
 
-const MIGRATIONS: &[&str] = &[V1, V2, V3];
+const MIGRATIONS: &[&str] = &[V1, V2, V3, V4];
 
 /// Brings the database to the newest schema. Each migration runs once, in a transaction, and bumps
 /// `user_version`.
@@ -207,4 +207,44 @@ INSERT INTO attachment_embedded(model, message, part)
 DROP INDEX attachment_index_state;
 ALTER TABLE attachment_index DROP COLUMN model;
 CREATE INDEX attachment_index_state ON attachment_index(state);
+"#;
+
+/// Contacts and their groups, which the screener keeps its decisions in, and what it saw the
+/// account's rules do with mail from group members.
+const V4: &str = r#"
+CREATE TABLE contact_cards (
+    id      TEXT PRIMARY KEY,
+    uid     TEXT NOT NULL,
+    kind    TEXT NOT NULL DEFAULT 'individual',
+    name    TEXT NOT NULL DEFAULT '',
+    -- Made locally by a queued action; replaced by the server's card once it syncs.
+    pending INTEGER NOT NULL DEFAULT 0
+) WITHOUT ROWID;
+CREATE INDEX contact_cards_uid ON contact_cards(uid);
+
+CREATE TABLE contact_emails (
+    email TEXT NOT NULL,
+    card  TEXT NOT NULL REFERENCES contact_cards(id) ON DELETE CASCADE,
+    PRIMARY KEY (email, card)
+) WITHOUT ROWID;
+CREATE INDEX contact_emails_card ON contact_emails(card);
+
+CREATE TABLE group_members (
+    grp TEXT NOT NULL REFERENCES contact_cards(id) ON DELETE CASCADE,
+    uid TEXT NOT NULL,
+    PRIMARY KEY (grp, uid)
+) WITHOUT ROWID;
+CREATE INDEX group_members_uid ON group_members(uid);
+
+-- New mail from a member of a screener group: routed is 1 when it arrived where the group's rule
+-- sends it, 0 when it arrived elsewhere and schlau moved it.
+CREATE TABLE screener_events (
+    message TEXT NOT NULL,
+    grp     TEXT NOT NULL,
+    routed  INTEGER NOT NULL,
+    at      INTEGER NOT NULL,
+    PRIMARY KEY (message, grp)
+) WITHOUT ROWID;
+
+CREATE INDEX messages_from_email ON messages(lower(from_email));
 "#;

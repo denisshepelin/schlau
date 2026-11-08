@@ -74,6 +74,12 @@ impl HasId for Email {
     }
 }
 
+impl HasId for Mailbox {
+    fn id(&self) -> &Id {
+        &self.id
+    }
+}
+
 impl HasId for EmailSubmission {
     fn id(&self) -> &Id {
         &self.id
@@ -241,6 +247,16 @@ impl<T: Transport> Client<T> {
             created: resp.get(&created)?.list,
             updated: resp.get(&updated)?.list,
         })
+    }
+
+    /// Creates a mailbox under `parent` (top level when None) and returns its id.
+    pub fn create_mailbox(&self, name: &str, parent: Option<&Id>) -> Result<Id> {
+        let mut req = RequestBuilder::new();
+        let call = req.call(
+            Set::<Mailbox>::new(self.mail_account_id()?)
+                .create("new", serde_json::json!({ "name": name, "parentId": parent })),
+        );
+        created_id(&self.send(req)?.get(&call)?, "new")
     }
 
     pub fn mailboxes(&self) -> Result<GetResponse<Mailbox>> {

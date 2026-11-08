@@ -381,6 +381,168 @@ fn message_vectors_are_kept_per_model() {
     assert_eq!(store.reader().unwrap().vector_progress("potion").unwrap().0, 0);
 }
 
+fn group(id: &str, name: &str, members: &[&str]) -> ContactRecord {
+    ContactRecord {
+        id: id.into(),
+        uid: format!("uid-{id}"),
+        kind: "group".into(),
+        name: name.into(),
+        members: members.iter().map(|m| m.to_string()).collect(),
+        ..Default::default()
+    }
+}
+
+fn person(id: &str, emails: &[&str]) -> ContactRecord {
+    ContactRecord {
+        id: id.into(),
+        uid: format!("uid-{id}"),
+        kind: "individual".into(),
+        name: id.into(),
+        emails: emails.iter().map(|e| e.to_string()).collect(),
+        ..Default::default()
+    }
+}
+
+fn screener_store() -> (tempfile::TempDir, Store) {
+    let (dir, mut store) = store();
+    store
+        .write(|tx| {
+            tx.upsert_mailbox(&mailbox("triage", None))?;
+            tx.upsert_mailbox(&mailbox("news", None))?;
+            tx.upsert_mailbox(&mailbox("sent", Some("sent")))?;
+            tx.upsert_contact(&group("g-news", "Screener · News", &["uid-p-billing"]))?;
+            tx.upsert_contact(&group("g-out", "Screener · Out", &[]))?;
+            tx.upsert_contact(&person("p-billing", &["Billing@Shop.example"]))?;
+            tx.upsert_contact(&person("p-friend", &["friend@x.com"]))?;
+            tx.upsert_message(&message("m1", "t1", 100, ("Shop", "Receipts@shop.example"), "Receipt 1", &["triage"]))?;
+            tx.upsert_message(&message("m2", "t2", 300, ("Shop", "receipts@shop.example"), "Receipt 2", &["triage"]))?;
+            tx.upsert_message(&message("m3", "t3", 200, ("Ann", "ann@x.com"), "Hello", &["triage"]))?;
+            tx.upsert_message(&message("m4", "t4", 50, ("Shop", "receipts@shop.example"), "Old receipt", &["archive"]))?;
+            let mut sent = message("m5", "t3", 250, ("Me", "me@example.com"), "Re: Hello", &["sent"]);
+            sent.addresses.to = vec![Address { name: "Ann".into(), email: "Ann@x.com".into() }];
+            tx.upsert_message(&sent).map(|_| ())
+        })
+        .unwrap();
+    (dir, store)
+}
+
+#[test]
+fn the_screener_groups_a_folder_by_sender_with_what_the_replica_knows() {
+    let (_dir, store) = screener_store();
+    let senders = store.reader().unwrap().screener_senders("triage").unwrap();
+    assert_eq!(senders.iter().map(|s| s.email.as_str()).collect::<Vec<_>>(), ["receipts@shop.example", "ann@x.com"]);
+    let shop = &senders[0];
+    assert_eq!(shop.message_ids, ["m2", "m1"]);
+    assert_eq!((shop.unread, shop.latest_subject.as_str(), shop.contact, shop.replied), (2, "Receipt 2", false, false));
+    assert_eq!(shop.elsewhere, [("archive".to_string(), 1)]);
+    assert_eq!(shop.domain_groups, [("g-news".to_string(), 1)], "billing@ at the same domain is filed");
+    assert!(senders[1].replied, "Sent has a reply to Ann");
+}
+
+#[test]
+fn adding_a_sender_to_a_group_makes_a_pending_card_until_the_server_has_one() {
+    let (_dir, mut store) = screener_store();
+    let add = Action::AddToGroup {
+        group_id: "g-news".into(),
+        email: "Receipts@shop.example".into(),
+        name: "Shop".into(),
+        uid: "urn:uuid:new".into(),
+    };
+    store.write(|tx| tx.perform(&add)).unwrap();
+    let reader = store.reader().unwrap();
+    assert_eq!(reader.card_for_email("receipts@shop.example").unwrap(), Some(("urn:uuid:new".into(), true)));
+    assert_eq!(reader.groups_of("receipts@shop.example").unwrap(), ["g-news"]);
+    assert_eq!(reader.member_uids("g-news", "receipts@shop.example").unwrap(), ["urn:uuid:new"]);
+
+    store.write(|tx| tx.perform(&Action::AddToGroup {
+        group_id: "g-out".into(),
+        email: "friend@x.com".into(),
+        name: String::new(),
+        uid: "urn:uuid:unused".into(),
+    })).unwrap();
+    assert_eq!(store.reader().unwrap().member_uids("g-out", "friend@x.com").unwrap(), ["uid-p-friend"], "an existing card is reused");
+
+    let remove = Action::RemoveFromGroup {
+        group_id: "g-news".into(),
+        email: "receipts@shop.example".into(),
+        name: "Shop".into(),
+        uid: "urn:uuid:new".into(),
+        delete_card: true,
+    };
+    store.write(|tx| tx.perform(&remove)).unwrap();
+    let reader = store.reader().unwrap();
+    assert!(reader.groups_of("receipts@shop.example").unwrap().is_empty());
+    assert_eq!(reader.card_by_uid("urn:uuid:new").unwrap(), Some(("pending:urn:uuid:new".into(), 0)), "kept for the replay to delete");
+    assert_eq!(reader.outbox().unwrap().len(), 3);
+}
+
+#[test]
+fn a_group_not_in_the_replica_is_left_alone() {
+    let (_dir, mut store) = screener_store();
+    let add = Action::AddToGroup { group_id: "g-missing".into(), email: "a@b.c".into(), name: String::new(), uid: "u".into() };
+    store.write(|tx| tx.apply_locally(&add)).unwrap();
+    assert_eq!(store.reader().unwrap().card_for_email("a@b.c").unwrap(), None);
+}
+
+#[test]
+fn messages_from_group_members_outside_their_folder_are_misrouted() {
+    let (_dir, mut store) = screener_store();
+    store
+        .write(|tx| {
+            tx.upsert_message(&message("m6", "t6", 400, ("Billing", "billing@shop.example"), "Invoice", &["triage"]))?;
+            tx.upsert_message(&message("m7", "t7", 410, ("Billing", "billing@shop.example"), "Invoice 2", &["news"]))?;
+            tx.upsert_message(&message("m8", "t8", 420, ("Billing", "billing@shop.example"), "Invoice 3", &["inbox"]))
+                .map(|_| ())
+        })
+        .unwrap();
+    let reader = store.reader().unwrap();
+    let groups = [("g-out".to_string(), "junk".to_string()), ("g-news".to_string(), "news".to_string())];
+    let found = reader.misrouted(&["triage".into(), "inbox".into()], &groups).unwrap();
+    assert_eq!(
+        found,
+        [
+            Misrouted { message_id: "m6".into(), mailbox_id: "triage".into(), group_id: "g-news".into() },
+            Misrouted { message_id: "m8".into(), mailbox_id: "inbox".into(), group_id: "g-news".into() },
+        ]
+    );
+    assert_eq!(reader.group_of_message("m7", &["g-news".into()]).unwrap().as_deref(), Some("g-news"));
+    assert_eq!(reader.group_of_message("m1", &["g-news".into()]).unwrap(), None);
+}
+
+#[test]
+fn routing_events_count_once_per_message() {
+    let (_dir, mut store) = screener_store();
+    store
+        .write(|tx| {
+            tx.record_screener_event("m1", "g-news", true)?;
+            tx.record_screener_event("m1", "g-news", false)?;
+            tx.record_screener_event("m2", "g-news", false)
+        })
+        .unwrap();
+    let stats = store.reader().unwrap().routing_stats("g-news").unwrap();
+    assert_eq!((stats.routed, stats.missed), (1, 1));
+    assert!(stats.last_missed_at.is_some());
+    assert_eq!(store.reader().unwrap().routing_stats("g-out").unwrap(), RoutingStats::default());
+}
+
+#[test]
+fn a_full_contact_sync_replaces_cards_and_drops_pending_ones() {
+    let (_dir, mut store) = screener_store();
+    store
+        .write(|tx| tx.perform(&Action::AddToGroup { group_id: "g-news".into(), email: "n@x.com".into(), name: String::new(), uid: "u-n".into() }))
+        .unwrap();
+    store
+        .write(|tx| {
+            tx.replace_contacts(&[group("g-news", "Screener · News", &[]), person("p-n", &["n@x.com"])])?;
+            tx.drop_pending_contacts()
+        })
+        .unwrap();
+    let reader = store.reader().unwrap();
+    assert_eq!(reader.contact_count().unwrap(), 2);
+    assert_eq!(reader.contact_groups().unwrap(), [ContactGroup { id: "g-news".into(), name: "Screener · News".into(), members: 0 }]);
+    assert_eq!(reader.card_for_email("n@x.com").unwrap(), Some(("uid-p-n".into(), false)));
+}
+
 /// Opens (and so migrates) the database in `SCHLAU_MIGRATE_DB`: run it on a copy of a real replica before a
 /// schema change ships. `SCHLAU_MIGRATE_DB=… cargo test -p schlau-store migrates_a_copy -- --ignored --nocapture`.
 #[test]
